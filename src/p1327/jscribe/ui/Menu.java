@@ -1,7 +1,7 @@
 package p1327.jscribe.ui;
 
 /*
- * Copyright (c) 2018 your friendly Overlord & friendlyOverlordDev
+ * Copyright (c) 2018 friendlyOverlordDev
  * 
  * This file is part of JScribe.
  * 

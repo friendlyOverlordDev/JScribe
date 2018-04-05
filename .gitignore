@@ -1,7 +1,9 @@
 /bin/
+/test/
 /.project
 /.classpath
 /.settings
+
 
 # Compiled class file
 *.class
