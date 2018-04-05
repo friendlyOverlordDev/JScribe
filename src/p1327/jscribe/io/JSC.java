@@ -1,8 +1,5 @@
 package p1327.jscribe.io;
 
-import java.io.File;
-import java.io.InputStream;
-
 /*
  * Copyright (c) 2018 friendlyOverlordDev
  * 
@@ -22,6 +19,8 @@ import java.io.InputStream;
  * along with JScribe.  If not, see <http://www.gnu.org/licenses/>.
  * 
  */
+
+import java.io.InputStream;
 
 import java.util.Vector;
 

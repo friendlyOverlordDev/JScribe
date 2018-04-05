@@ -27,10 +27,12 @@ import java.io.File;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import javax.swing.JScrollPane;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 import p1327.jscribe.io.FileHandler;
 import p1327.jscribe.io.JSArchive;
+import p1327.jscribe.ui.ImageViewer;
 import p1327.jscribe.ui.Menu;
 import p1327.jscribe.ui.Menu.Item;
 import p1327.jscribe.ui.Menu.SubMenu;
@@ -52,6 +54,8 @@ public class Editor extends JFrame implements Unserialzable, Window {
 							   exportImg,
 							   exportFolder;
 	
+	private final ImageViewer viewer;
+	
 	private JSArchive jsa = null;
 	private boolean unsaved = false;
 	private File last = new File(".");
@@ -59,7 +63,7 @@ public class Editor extends JFrame implements Unserialzable, Window {
 	public Editor() {
 		setTitle("JScribe");
 		setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
-		setLayout(null);
+//		setLayout(null);
 		center(1000, 900);
 		
 		openJSC = new JFileChooser();
@@ -105,20 +109,16 @@ public class Editor extends JFrame implements Unserialzable, Window {
 								return;
 							
 							openJSC.setCurrentDirectory(last);
-							if(openJSC.showOpenDialog(Editor.this) == JFileChooser.APPROVE_OPTION) {
-								last = openJSC.getSelectedFile();
-								updateJSA(FileHandler.openJSC(openJSC.getSelectedFile()));
-							}
+							if(openJSC.showOpenDialog(Editor.this) == JFileChooser.APPROVE_OPTION)
+								updateJSA(FileHandler.openJSC(last = openJSC.getSelectedFile()));
 						}),
 						new Item("Open Archive", 'O', "open existing .jsa-file\n(archive with .jsc and images)", e -> {
 							if(isUnsavedAndCancel())
 								return;
 							
 							openArchive.setCurrentDirectory(last);
-							if(openArchive.showOpenDialog(Editor.this) == JFileChooser.APPROVE_OPTION) {
-								last = openArchive.getSelectedFile();
-								updateJSA(FileHandler.openJSA(openArchive.getSelectedFile()));
-							}
+							if(openArchive.showOpenDialog(Editor.this) == JFileChooser.APPROVE_OPTION) 
+								updateJSA(FileHandler.openJSA(last = openArchive.getSelectedFile()));
 						}),
 						null,
 						new Item("Save", 's', "when already saved, overrides it,\notherwise saves as a new .jsc-file", e -> {
@@ -149,7 +149,7 @@ public class Editor extends JFrame implements Unserialzable, Window {
 								}
 							saveAsArchive.setCurrentDirectory(last);
 							if(saveAsArchive.showSaveDialog(Editor.this) == JFileChooser.APPROVE_OPTION) {
-								last = saveAsArchive.getSelectedFile();
+								last =
 								jsa.name = saveAsArchive.getSelectedFile();
 								if(FileHandler.save(jsa))
 									unsaved = false;
@@ -161,24 +161,34 @@ public class Editor extends JFrame implements Unserialzable, Window {
 								return;
 							
 							importImg.setCurrentDirectory(last);
-							if(importImg.showOpenDialog(Editor.this) == JFileChooser.APPROVE_OPTION) {
-								last = importImg.getSelectedFile();
-								updateJSA(FileHandler.importImg(importImg.getSelectedFile()));
-							}
+							if(importImg.showOpenDialog(Editor.this) == JFileChooser.APPROVE_OPTION)
+								updateJSA(FileHandler.importImg(last = importImg.getSelectedFile()));
 						}),
 						new Item("Import Folder", 'I', "creates a new project from all images in a folder\n(" + Static.supportedTypes + ")", e -> {
 							if(isUnsavedAndCancel())
 								return;
 							
 							importFolder.setCurrentDirectory(last);
-							if(importFolder.showOpenDialog(Editor.this) == JFileChooser.APPROVE_OPTION) {
-								last = importFolder.getSelectedFile();
-								updateJSA(FileHandler.importFolder(importFolder.getSelectedFile()));
-							}
+							if(importFolder.showOpenDialog(Editor.this) == JFileChooser.APPROVE_OPTION)
+								updateJSA(FileHandler.importFolder(last = importFolder.getSelectedFile()));
 						}),
 						null,
 						new Item("Export...", 'e', "exports the files by merging text and images\n(output is writting in a new file/files)", e -> {
-							Message.error("Export Error", new RuntimeException("Unsupported ATM"));
+							if(jsa == null)
+								return;
+							if(jsa.name != null) {
+								exportFolder.setCurrentDirectory(last);
+								if(exportFolder.showSaveDialog(Editor.this) == JFileChooser.APPROVE_OPTION)
+									FileHandler.exportFolder(jsa, last = exportFolder.getSelectedFile());
+							}else if(jsa.jscName != null || jsa.size() == 1) {
+								exportImg.setCurrentDirectory(last);
+								if(exportImg.showSaveDialog(Editor.this) == JFileChooser.APPROVE_OPTION)
+									FileHandler.exportImg(jsa, last = exportImg.getSelectedFile());
+							} else {
+								exportFolder.setCurrentDirectory(last);
+								if(exportFolder.showSaveDialog(Editor.this) == JFileChooser.APPROVE_OPTION)
+									FileHandler.exportFolder(jsa, last = exportFolder.getSelectedFile());
+							}
 						}),
 						null,
 						new Item("Exit", 'q', "closes this program", e -> {
@@ -187,6 +197,8 @@ public class Editor extends JFrame implements Unserialzable, Window {
 						})
 				)
 		));
+		
+		
 		
 		addWindowListener(new WindowListener() {
 			
@@ -214,6 +226,9 @@ public class Editor extends JFrame implements Unserialzable, Window {
 			@Override
 			public void windowActivated(WindowEvent e) {}
 		});
+		
+		viewer = new ImageViewer();
+		add(new JScrollPane(viewer));
 		
 		setVisible(true);
 	}
@@ -246,36 +261,40 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		if(jsa == null)
 			return;
 		this.jsa = jsa;
+		viewer.setImage(jsa.get(0), jsa.jsc.imgs.get(0));
 		unsaved = false;
 	}
 	
 	void saveAs() {
 		int result = JOptionPane.showOptionDialog(null, "Save text alone (JSC) or bundle with images (Archive; JSA)?", "JSC or Archive?",
 				JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, saveAsOptions, null);
-		if(result == JOptionPane.YES_OPTION) { // == JSC
+		if(result == 0) { // == JSC
 			saveAsJSC.setCurrentDirectory(last);
 			if(saveAsJSC.showSaveDialog(Editor.this) == JFileChooser.APPROVE_OPTION) {
 				File f = saveAsJSC.getSelectedFile();
 				String name = f.getName();
 				if(!name.endsWith(".jsc"))
 					f = new File(f.getParent() + "/" + name + ".jsc");
-				last = f;
+				last =
 				jsa.jscName = f;
+				jsa.name = null;
 				if(FileHandler.save(jsa))
 					unsaved = false;
 			}
-		} else { // JOptionPane.NO_OPTION == Archive
+		} else if(result == 1) { // == Archive
 			saveAsArchive.setCurrentDirectory(last);
 			if(saveAsArchive.showSaveDialog(Editor.this) == JFileChooser.APPROVE_OPTION) {
 				File f = saveAsArchive.getSelectedFile();
 				String name = f.getName();
 				if(!name.endsWith(".jsa"))
 					f = new File(f.getParent() + "/" + name + ".jsa");
-				last = f;
+				last =
 				jsa.name = f;
+				jsa.jscName = null;
 				if(FileHandler.save(jsa))
 					unsaved = false;
 			}
 		}
+		// nothing was selected, the dialog was x-ed
 	}
 }

@@ -32,7 +32,10 @@ import java.util.zip.ZipOutputStream;
 
 import javax.imageio.ImageIO;
 
+import p1327.jscribe.io.data.JSImg;
+import p1327.jscribe.io.data.Text;
 import p1327.jscribe.util.Message;
+import p1327.jscribe.util.Renderer;
 import p1327.jscribe.util.Static;
 
 public class FileHandler {
@@ -136,5 +139,68 @@ public class FileHandler {
 			Message.error("Import Error", e);
 		}
 		return null;
+	}
+	
+	public static boolean exportImg(JSArchive jsa, File img) {
+		try {
+			String name = img.getName();
+			String ext = name.substring(name.lastIndexOf('.') + 1);
+			boolean hasExt = false;
+			JSImg jsimg = jsa.jsc.imgs.get(0);
+			for(String _ext : Static.supportedTypeList)
+				if(_ext.equals(ext)) {
+					hasExt = true;
+					break;
+				}
+			if(!hasExt) {
+				String iname = jsimg.img;
+				int pos = iname.lastIndexOf('.') + 1;
+				if(pos < 1)
+					throw new RuntimeException("Found image without file-format " + name);
+				ext = iname.substring(pos);
+				name = name + "." + ext;
+			}
+			
+			BufferedImage out = Renderer.copy(jsa.get(0));
+			Renderer r = new Renderer(out.getGraphics());
+			for(Text t : jsimg.texts)
+				r.write(t);
+			r.finish();
+			ImageIO.write(out, ext, img);
+		}catch(Exception e) {
+			Message.error("Import Error", e);
+		}
+		return false;
+	}
+	
+	public static boolean exportFolder(JSArchive jsa, File dir) {
+		try {
+			if(!dir.isDirectory())
+				throw new IOException(dir.getAbsolutePath() + " isn't a directory");
+			String name, ext;
+			BufferedImage bi;
+			JSImg jsimg;
+			int pos;
+			for(int i = 0, l = jsa.size(); i < l; i++) {
+				jsimg = jsa.jsc.imgs.get(i);
+				name = jsimg.img;
+				pos = name.lastIndexOf('.') + 1;
+				if(pos < 1)
+					throw new RuntimeException("Found image without file-format " + name);
+				ext = name.substring(pos);
+
+				bi = Renderer.copy(jsa.get(i));
+				Renderer r = new Renderer(bi.getGraphics());
+				for(Text t : jsimg.texts)
+					r.write(t);
+				r.finish();
+				
+				ImageIO.write(bi, ext, new File(dir.getAbsolutePath() + "/" + name));
+				
+			}
+		}catch(Exception e) {
+			Message.error("Import Error", e);
+		}
+		return false;
 	}
 }

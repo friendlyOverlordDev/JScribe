@@ -21,11 +21,19 @@ package p1327.jscribe.util;
  */
 
 import java.awt.GraphicsEnvironment;
+import java.awt.MouseInfo;
+import java.awt.Point;
 import java.awt.Rectangle;
 
 public interface Window {
 	
 	public static final int bottomSpace = 100;
+	public static final int topLeftSpace = 16;
+	
+	default void spawnUnderMouse() {
+		Point p = MouseInfo.getPointerInfo().getLocation();
+		setLocation(p.x - topLeftSpace, p.y - topLeftSpace);
+	}
 	
 	default void center(int width, int height) {
 		Rectangle rect = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration().getBounds();
@@ -40,6 +48,6 @@ public interface Window {
 	}
 	
 	void setSize(int width, int height);
-	
+
 	void setLocation(int x, int y);
 }

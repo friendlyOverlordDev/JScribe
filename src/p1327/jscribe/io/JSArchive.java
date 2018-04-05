@@ -85,15 +85,15 @@ public class JSArchive {
 		zos.putNextEntry(new ZipEntry(data));
 		zos.write(jsc.toJSON().toString().getBytes(charset));
 		
-		String name, exp;
+		String name, ext;
 		int pos;
 		for(int i = 0; i < l; i++) {
 			zos.putNextEntry(new ZipEntry(name = jsc.imgs.get(i).img));
 			pos = name.lastIndexOf('.') + 1;
 			if(pos < 1)
 				throw new RuntimeException("Found image without file-format " + name);
-			exp = name.substring(pos);
-			ImageIO.write(imgs.get(i), exp, zos);
+			ext = name.substring(pos);
+			ImageIO.write(imgs.get(i), ext, zos);
 		}
 	}
 	
