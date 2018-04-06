@@ -25,6 +25,7 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.font.GlyphVector;
 import java.awt.image.BufferedImage;
@@ -34,7 +35,7 @@ import p1327.jscribe.io.data.Text;
 public class Renderer {
 	
 	private final Graphics2D g2d;
-	private Font font = new Font("Comic Sans", Font.PLAIN, 10);
+	private Font font = new Font(Static.defaultRenderFont, Font.PLAIN, 20);
 	private Color color = Color.black;
 	
 	public Renderer(Graphics g) {
@@ -46,29 +47,36 @@ public class Renderer {
 	}
 	
 	public void writeLocal(Text t, int offset) {
-		// search for a better solution
-		g2d.setFont(font);
-		GlyphVector gv = font.createGlyphVector(g2d.getFontMetrics().getFontRenderContext(), t.text);
-		Shape s = gv.getOutline(offset, offset + font.getSize2D());
-		g2d.setStroke(new BasicStroke(2f));
-		g2d.setColor(Color.red);
-		g2d.fill(s);
-		g2d.setColor(color);
-		g2d.drawString(t.text, offset, offset + font.getSize2D());
-		//font.layoutGlyphVector(g2d.getFontMetrics().getFontRenderContext(), t.text.toCharArray(), 0, t.text.length(), 0);
+		write(t.text.get(), offset, offset);
 	}
 	
 	public void write(Text t) {
+		write(t.text.get(), t.x.get(), t.y.get());
+	}
+	
+	public void write(String text, int x, int y) {
+		setUp();
 		// search for a better solution
 		g2d.setFont(font);
-		GlyphVector gv = font.createGlyphVector(g2d.getFontMetrics().getFontRenderContext(), t.text);
-		Shape s = gv.getOutline(t.x, t.y + font.getSize2D());
+		GlyphVector gv = font.createGlyphVector(g2d.getFontMetrics().getFontRenderContext(), text);
+		Shape s = gv.getOutline(x, y + font.getSize2D());
 		g2d.setStroke(new BasicStroke(2f));
 		g2d.setColor(Color.red);
-		g2d.fill(s);
+		g2d.draw(s);
 		g2d.setColor(color);
-		g2d.drawString(t.text, t.x, t.y + font.getSize2D());
+		g2d.drawString(text, x, y + font.getSize2D());
 		//font.layoutGlyphVector(g2d.getFontMetrics().getFontRenderContext(), t.text.toCharArray(), 0, t.text.length(), 0);
+	}
+	
+	public void setUp() {
+	    g2d.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
+	    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+	    g2d.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_QUALITY);
+	    g2d.setRenderingHint(RenderingHints.KEY_DITHERING, RenderingHints.VALUE_DITHER_ENABLE);
+	    g2d.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+	    g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+	    g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+	    g2d.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
 	}
 	
 	public void finish() {

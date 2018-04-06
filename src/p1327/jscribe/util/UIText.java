@@ -20,6 +20,8 @@ package p1327.jscribe.util;
  * 
  */
 
+import java.awt.Font;
+
 public class UIText {
 	
 	private UIText() {}
@@ -34,5 +36,21 @@ public class UIText {
 		if(convert)
 			str = "<html>" + str.replace("\n", "<br>") + "</html>";
 		return str;
+	}
+
+	public static String displayableSingleLine(String str) {
+		return str.replace('\n', ' ');
+	}
+	
+	public static Font bold(Font f) {
+		return alter(f, Font.BOLD);
+	}
+	
+	public static Font italic(Font f) {
+		return alter(f, Font.ITALIC);
+	}
+	
+	public static Font alter(Font f, int flags) {
+		return new Font(f.getFontName(), flags, f.getSize());
 	}
 }

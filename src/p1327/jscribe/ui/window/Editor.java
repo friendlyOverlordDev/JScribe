@@ -20,6 +20,8 @@ package p1327.jscribe.ui.window;
  * 
  */
 
+import java.awt.BorderLayout;
+
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.File;
@@ -32,6 +34,8 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 import p1327.jscribe.io.FileHandler;
 import p1327.jscribe.io.JSArchive;
+import p1327.jscribe.io.data.JSImg;
+import p1327.jscribe.ui.DataViewer;
 import p1327.jscribe.ui.ImageViewer;
 import p1327.jscribe.ui.Menu;
 import p1327.jscribe.ui.Menu.Item;
@@ -45,6 +49,8 @@ public class Editor extends JFrame implements Unserialzable, Window {
 	
 	private static final String[] saveAsOptions = {"JSC", "Archive"};
 	
+	public static Editor $;
+	
 	private final JFileChooser openJSC,
 							   openArchive,
 							   saveAsJSC,
@@ -54,17 +60,21 @@ public class Editor extends JFrame implements Unserialzable, Window {
 							   exportImg,
 							   exportFolder;
 	
-	private final ImageViewer viewer;
+	public final ImageViewer viewer;
+	public final DataViewer data;
+	
+	private final Item save, saveAs, saveArchive, export;
 	
 	private JSArchive jsa = null;
 	private boolean unsaved = false;
 	private File last = new File(".");
 	
 	public Editor() {
+		$ = this;
 		setTitle("JScribe");
 		setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
 //		setLayout(null);
-		center(1000, 900);
+		center(1200, 900);
 		
 		openJSC = new JFileChooser();
 		openJSC.setDialogTitle("Select .jsc-File to Open...");
@@ -121,7 +131,7 @@ public class Editor extends JFrame implements Unserialzable, Window {
 								updateJSA(FileHandler.openJSA(last = openArchive.getSelectedFile()));
 						}),
 						null,
-						new Item("Save", 's', "when already saved, overrides it,\notherwise saves as a new .jsc-file", e -> {
+						save = new Item("Save", 's', "when already saved, overrides it,\notherwise saves as a new .jsc-file", e -> {
 							if(jsa == null)
 								return;
 							if(jsa.name != null || jsa.jscName != null)
@@ -134,12 +144,12 @@ public class Editor extends JFrame implements Unserialzable, Window {
 							saveAs();
 								
 						}),
-						new Item("Save As...", "saves project as .jsc or .jsa-file, forces the save dialog to open", e -> {
+						saveAs = new Item("Save As...", "saves project as .jsc or .jsa-file, forces the save dialog to open", e -> {
 							if(jsa == null)
 								return;
 							saveAs();
 						}),
-						new Item("Save Archive", 'S', "saves the project as .jsa\n(archive with .jsc and images)", e -> {
+						saveArchive = new Item("Save Archive", 'S', "saves the project as .jsa\n(archive with .jsc and images)", e -> {
 							if(jsa == null)
 								return;
 							if(jsa.name != null)
@@ -173,7 +183,7 @@ public class Editor extends JFrame implements Unserialzable, Window {
 								updateJSA(FileHandler.importFolder(last = importFolder.getSelectedFile()));
 						}),
 						null,
-						new Item("Export...", 'e', "exports the files by merging text and images\n(output is writting in a new file/files)", e -> {
+						export = new Item("Export...", 'e', "exports the files by merging text and images\n(output is writting in a new file/files)", e -> {
 							if(jsa == null)
 								return;
 							if(jsa.name != null) {
@@ -198,6 +208,10 @@ public class Editor extends JFrame implements Unserialzable, Window {
 				)
 		));
 		
+		save.setEnabled(false);
+		saveAs.setEnabled(false);
+		saveArchive.setEnabled(false);
+		export.setEnabled(false);
 		
 		
 		addWindowListener(new WindowListener() {
@@ -230,6 +244,11 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		viewer = new ImageViewer();
 		add(new JScrollPane(viewer));
 		
+		data = new DataViewer();
+		add(data, BorderLayout.EAST);
+		
+		updateJSA(FileHandler.openJSA(new File("./test/doge.jsa")));
+		
 		setVisible(true);
 	}
 	
@@ -261,8 +280,16 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		if(jsa == null)
 			return;
 		this.jsa = jsa;
-		viewer.setImage(jsa.get(0), jsa.jsc.imgs.get(0));
+		JSImg i = jsa.jsc.imgs.get(0);
+		viewer.setImage(jsa.get(0), i);
+		data.setImage(i);
+		
 		unsaved = false;
+		
+		save.setEnabled(true);
+		saveAs.setEnabled(true);
+		saveArchive.setEnabled(true);
+		export.setEnabled(true);
 	}
 	
 	void saveAs() {

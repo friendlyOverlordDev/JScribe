@@ -30,17 +30,19 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.util.Vector;
 
-import javax.swing.JComponent;
+import javax.swing.JPanel;
 
 import p1327.jscribe.io.data.JSImg;
 import p1327.jscribe.io.data.Note;
 import p1327.jscribe.io.data.Text;
 import p1327.jscribe.util.Unserialzable;
 
-public class ImageViewer extends JComponent implements Unserialzable{
+public class ImageViewer extends JPanel implements Unserialzable{
 	
 	Image img = null;
 	JSImg jsimg = null;
+	
+	private int imgW = 0, imgH = 0;
 	
 	final Vector<NotePoint> points;
 	NotePoint newPoint = null;
@@ -48,10 +50,8 @@ public class ImageViewer extends JComponent implements Unserialzable{
 	TextLocation newText = null;
 	Point start = null;
 	
+//	PlacementMode pMode = PlacementMode.NOTE;	
 	PlacementMode pMode = PlacementMode.TEXT;
-	
-	// todo: reset mode on esc-key;
-	// todo set unsaved
 	
 	public ImageViewer() {
 		this(null, null);
@@ -59,7 +59,7 @@ public class ImageViewer extends JComponent implements Unserialzable{
 	
 	public ImageViewer(Image _img, JSImg _jsimg) {
 		setLayout(null);
-		setBackground(Color.black);
+		setBackground(new Color(0x333333));
 		points = new Vector<>();
 		locations = new Vector<>();
 		
@@ -72,13 +72,13 @@ public class ImageViewer extends JComponent implements Unserialzable{
 				if(pMode == PlacementMode.NOTE) {
 					if(newPoint == null)
 						return;
-					newPoint.setLocation(e.getPoint());
-					newPoint.openWindow();
+					newPoint.note.setLocation(e.getPoint());
+//					newPoint.openWindow();
 				}else if(pMode == PlacementMode.TEXT){
 					if(newText == null)
 						return;
-					newText.calcSize(start, e.getPoint());
-					newText.openWindow();
+					newText.calcSize(start, fixPoint(e.getPoint()));
+//					newText.openWindow();
 				}
 			}
 			
@@ -88,16 +88,24 @@ public class ImageViewer extends JComponent implements Unserialzable{
 					return;
 				if(e.getButton() != MouseEvent.BUTTON1)
 					return;
+				
+				Point m = e.getPoint();
+				int h = getImgHeight() - 1, w = getImgWidth() - 1;
+				if(m.x < 0 || m.y < 0 || m.x > w || m.y > h)
+					return;
+				
 				if(pMode == PlacementMode.NOTE) {
-					newPoint = new NotePoint();
-					newPoint.setLocation(e.getPoint());
+					Note n = new Note("", 0, 0);
+					newPoint = new NotePoint(n);
+					n.setLocation(m);
 					add(newPoint);
 					points.add(newPoint);
 					jsimg.notes.add(newPoint.getNote());
 					newPoint.repaint();
 				}else if(pMode == PlacementMode.TEXT){
-					newText = new TextLocation();
-					newText.setLocation(start = e.getPoint());
+					Text t = new Text("", 0, 0, 0, 0);
+					newText = new TextLocation(t);
+					t.setLocation(start = m);
 					add(newText);
 					locations.add(newText);
 					jsimg.texts.add(newText.getText());
@@ -123,9 +131,9 @@ public class ImageViewer extends JComponent implements Unserialzable{
 			@Override
 			public void mouseDragged(MouseEvent e) {
 				if(newPoint != null)
-					newPoint.setLocation(e.getPoint());
+					newPoint.note.setLocation(fixPoint(e.getPoint()));
 				if(newText != null)
-					newText.calcSize(start, e.getPoint());
+					newText.calcSize(start, fixPoint(e.getPoint()));
 			}
 		});
 		
@@ -134,6 +142,13 @@ public class ImageViewer extends JComponent implements Unserialzable{
 	}
 	
 	public void setImage(Image img, JSImg jsimg) {
+		for(NotePoint p : points)
+			remove(p);
+		points.clear();
+		for(TextLocation l : locations)
+			remove(l);
+		locations.clear();
+		
 		this.img = img;
 		this.jsimg = jsimg;
 		NotePoint np;
@@ -148,8 +163,29 @@ public class ImageViewer extends JComponent implements Unserialzable{
 			add(tl);
 			locations.add(tl);
 		}
-		this.setPreferredSize(new Dimension(img.getWidth(this), img.getHeight(this)));
+		this.setPreferredSize(new Dimension(imgW = img.getWidth(this), imgH = img.getHeight(this)));
 		this.repaint();
+	}
+	
+	public int getImgWidth() {
+		return imgW;
+	}
+	
+	public int getImgHeight() {
+		return imgH;
+	}
+	
+	Point fixPoint(Point p) {
+		int h = imgH, w = imgW;
+		if(p.x < 0)
+			p.x = 0;
+		if(p.y < 0)
+			p.y = 0;
+		if(p.x > w)
+			p.x = w;
+		if(p.y > h)
+			p.y = h;
+		return p;
 	}
 	
 	@Override

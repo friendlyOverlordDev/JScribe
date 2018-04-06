@@ -22,5 +22,9 @@ package p1327.jscribe.ui;
 
 public enum EditMode {
 	
-	NONE, OPEN, MOVE, NEW;
+	NONE, // not in edit
+	OPEN, // open in note-viewer
+	MOVE, // move on img-viewer
+	RESIZE, // resize (only for textLocation)
+	NEW; // newly created
 }

@@ -20,6 +20,9 @@ package p1327.jscribe.io.data;
  * 
  */
 
+import java.awt.Dimension;
+import java.awt.Point;
+
 import java.util.Vector;
 
 import org.json.JSONException;
@@ -27,6 +30,8 @@ import org.json.JSONObject;
 
 import p1327.jscribe.util.JSON;
 import p1327.jscribe.util.JSONable;
+import p1327.jscribe.util.data.IntProperty;
+import p1327.jscribe.util.data.Property;
 
 public class Text implements JSONable {
 	
@@ -36,38 +41,48 @@ public class Text implements JSONable {
 								W = "w",
 								H = "h",
 								NOTES = "notes";
-	
-	public String text;
-	public int x, y, w, h;
-	public final Vector<TextNote> notes;
+
+	public final Property<String> text;
+	public final IntProperty x, y, w, h;
+	public final Vector<SimpleNote> notes;
 	
 	public Text(String text, int x, int y, int w, int h) {
-		this.text = text;
-		this.x = x;
-		this.y = y;
-		this.w = w;
-		this.h = h;
+		this.text = new Property<>(text);
+		this.x = new IntProperty(x);
+		this.y = new IntProperty(y);
+		this.w = new IntProperty(w);
+		this.h = new IntProperty(h);
 		notes = new Vector<>();
 	}
 	
 	public Text(JSONObject text) throws JSONException {
-		this.text = text.getString(TEXT);
-		x = text.getInt(X);
-		y = text.getInt(Y);
-		w = text.getInt(W);
-		h = text.getInt(H);
-		notes = JSON.extractAsJSONObjectToVector(text.getJSONArray(NOTES), o -> new TextNote(o));
+		this.text = new Property<>(text.getString(TEXT));
+		x = new IntProperty(text.getInt(X));
+		y = new IntProperty(text.getInt(Y));
+		w = new IntProperty(text.getInt(W));
+		h = new IntProperty(text.getInt(H));
+		notes = JSON.extractAsJSONObjectToVector(text.getJSONArray(NOTES), o -> new SimpleNote(o));
 	}
 	
 	@Override
 	public JSONObject toJSON() {
 		JSONObject json = new JSONObject();
-		json.put(TEXT, text);
-		json.put(X, x);
-		json.put(Y, y);
-		json.put(W, w);
-		json.put(H, h);
+		json.put(TEXT, text.get());
+		json.put(X, x.get());
+		json.put(Y, y.get());
+		json.put(W, w.get());
+		json.put(H, h.get());
 		json.put(NOTES, JSON.packJSONableVector(notes));
 		return json;
+	}
+	
+	public void setLocation(Point p) {
+		x.set(p.x);
+		y.set(p.y);
+	}
+	
+	public void setSize(Dimension d) {
+		w.set(d.width);
+		h.set(d.height);
 	}
 }

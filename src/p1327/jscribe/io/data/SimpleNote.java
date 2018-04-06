@@ -20,42 +20,36 @@ package p1327.jscribe.io.data;
  * 
  */
 
-import java.awt.Point;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import p1327.jscribe.util.data.IntProperty;
+import p1327.jscribe.util.JSONable;
+import p1327.jscribe.util.data.BoolProperty;
+import p1327.jscribe.util.data.Property;
 
-public class Note extends SimpleNote {
+public class SimpleNote implements JSONable {
 	
-	private static final String X = "x",
-								Y = "y";
+	private static final String INFO = "info",
+								CHECKED = "checked";
+
+	public final Property<String> info;
+	public final BoolProperty checked;
 	
-	public final IntProperty x, y;
-	
-	public Note(String info, int x, int y) {
-		super(info);
-		this.x = new IntProperty(x);
-		this.y = new IntProperty(y);
+	public SimpleNote(String info) {
+		this.info = new Property<>(info);
+		checked = new BoolProperty(); // default is false
 	}
 	
-	public Note(JSONObject note) throws JSONException {
-		super(note);
-		x = new IntProperty(note.getInt(X));
-		y = new IntProperty(note.getInt(Y));
+	public SimpleNote(JSONObject note) throws JSONException {
+		info = new Property<>(note.getString(INFO));
+		checked = new BoolProperty(note.getBoolean(CHECKED));
 	}
 	
 	@Override
 	public JSONObject toJSON() {
-		JSONObject json = super.toJSON();
-		json.put(X, x.get());
-		json.put(Y, y.get());
+		JSONObject json = new JSONObject();
+		json.put(INFO, info.get());
+		json.put(CHECKED, checked.get());
 		return json;
-	}
-	
-	public void setLocation(Point p) {
-		x.set(p.x);
-		y.set(p.y);
 	}
 }

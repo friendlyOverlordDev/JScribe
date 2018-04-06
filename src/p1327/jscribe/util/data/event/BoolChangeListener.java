@@ -1,4 +1,4 @@
-package p1327.jscribe.util;
+package p1327.jscribe.util.data.event;
 
 /*
  * Copyright (c) 2018 friendlyOverlordDev
@@ -20,26 +20,8 @@ package p1327.jscribe.util;
  * 
  */
 
-import java.awt.GraphicsEnvironment;
+@FunctionalInterface
+public interface BoolChangeListener{
 
-public class Static {
-	
-	private Static() {}
-	
-	public static final String[] supportedTypeList = {"png", "jpg", "jpeg", "gif"};
-	public static final String supportedTypes = String.join(", ", supportedTypeList);
-	
-	public static final String[] fonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
-	public static final String defaultRenderFont;
-	
-	static {
-		String font = "Comic Sans".toLowerCase(), drf = null;
-		for(String f : fonts)
-			if(f.toLowerCase().startsWith(font)) {
-				drf= f;
-			}
-		if(drf == null)
-			drf = "Comic Sans MS";
-		defaultRenderFont = drf;
-	}
+	void change(BoolChangeEvent e);
 }

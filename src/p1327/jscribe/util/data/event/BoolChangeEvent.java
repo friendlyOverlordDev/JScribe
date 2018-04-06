@@ -1,4 +1,4 @@
-package p1327.jscribe.io.data;
+package p1327.jscribe.util.data.event;
 
 /*
  * Copyright (c) 2018 friendlyOverlordDev
@@ -20,34 +20,13 @@ package p1327.jscribe.io.data;
  * 
  */
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import p1327.jscribe.util.JSONable;
-
-public class TextNote implements JSONable {
+public class BoolChangeEvent {
 	
-	private static final String INFO = "info",
-								CHECKED = "checked";
+	public final boolean oldVal,
+						 newVal;
 	
-	public String info;
-	public boolean checked;
-	
-	public TextNote(String info) {
-		this.info = info;
-		checked = false;
-	}
-	
-	public TextNote(JSONObject note) throws JSONException {
-		info = note.getString(INFO);
-		checked = note.getBoolean(CHECKED);
-	}
-	
-	@Override
-	public JSONObject toJSON() {
-		JSONObject json = new JSONObject();
-		json.put(INFO, info);
-		json.put(CHECKED, checked);
-		return json;
+	public BoolChangeEvent(boolean oldVal, boolean newVal) {
+		this.oldVal = oldVal;
+		this.newVal = newVal;
 	}
 }
