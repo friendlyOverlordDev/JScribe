@@ -21,11 +21,13 @@ package p1327.jscribe.ui.window;
  */
 
 import java.awt.BorderLayout;
-
+import java.awt.Desktop;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.File;
+import java.net.URI;
 
+import javax.swing.ButtonGroup;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
@@ -34,12 +36,16 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 import p1327.jscribe.io.FileHandler;
 import p1327.jscribe.io.JSArchive;
+import p1327.jscribe.io.JSS;
 import p1327.jscribe.io.data.JSImg;
 import p1327.jscribe.ui.DataViewer;
 import p1327.jscribe.ui.ImageViewer;
 import p1327.jscribe.ui.Menu;
+import p1327.jscribe.ui.Menu.CheckItem;
 import p1327.jscribe.ui.Menu.Item;
+import p1327.jscribe.ui.Menu.RadioItem;
 import p1327.jscribe.ui.Menu.SubMenu;
+import p1327.jscribe.ui.PlacementMode;
 import p1327.jscribe.util.Message;
 import p1327.jscribe.util.Static;
 import p1327.jscribe.util.Unserialzable;
@@ -58,12 +64,15 @@ public class Editor extends JFrame implements Unserialzable, Window {
 							   importImg,
 							   importFolder,
 							   exportImg,
-							   exportFolder;
+							   exportFolder,
+							   importJSS,
+							   exportJSS;
 	
 	public final ImageViewer viewer;
 	public final DataViewer data;
 	
-	private final Item save, saveAs, saveArchive, export;
+	private final Item save, saveAs, saveArchive, export, iJSS, eJSS;
+	private final RadioItem placeNote, placeText;
 	
 	private JSArchive jsa = null;
 	private boolean unsaved = false;
@@ -75,6 +84,12 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
 //		setLayout(null);
 		center(1200, 900);
+		
+		viewer = new ImageViewer();
+		add(new JScrollPane(viewer));
+		
+		data = new DataViewer();
+		add(data, BorderLayout.EAST);
 		
 		openJSC = new JFileChooser();
 		openJSC.setDialogTitle("Select .jsc-File to Open...");
@@ -104,13 +119,22 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		
 		exportImg = new JFileChooser();
 		exportImg.setDialogTitle("Export Image to...");
-		exportImg.setFileFilter(new FileNameExtensionFilter("Graphics (\" + Static.supportedTypes + \")", Static.supportedTypeList));
+		exportImg.setFileFilter(new FileNameExtensionFilter("Graphics (" + Static.supportedTypes + ")", Static.supportedTypeList));
 		exportImg.setDialogType(JFileChooser.SAVE_DIALOG);
 		
 		exportFolder = new JFileChooser();
 		exportFolder.setDialogTitle("Export Images to ... (Directory)");
 		exportFolder.setDialogType(JFileChooser.SAVE_DIALOG);
 		exportFolder.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+		
+		importJSS = new JFileChooser();
+		importJSS.setDialogTitle("Select Style Definitions (JSS) to Import...");
+		importJSS.setFileFilter(new FileNameExtensionFilter("JScribe Style Definitions (jss)", "jss"));
+		
+		exportJSS = new JFileChooser();
+		exportJSS.setDialogTitle("Export Style Definitions (JSS) to...");
+		exportJSS.setFileFilter(new FileNameExtensionFilter("Graphics (jss)", "jss"));
+		exportJSS.setDialogType(JFileChooser.SAVE_DIALOG);
 		
 		setJMenuBar(new Menu(
 				new SubMenu("File",
@@ -205,13 +229,81 @@ public class Editor extends JFrame implements Unserialzable, Window {
 							if(requestExit())
 								Editor.this.dispose();
 						})
-				)
+				),
+				new SubMenu("Edit",
+						iJSS = new Item("Import JSS", "import and override currently used style definitions", e -> {
+							if(jsa == null)
+								return;
+							if(!Message.yesno("Import JSS", "You are about to import a JSS-File, this will remove all other Styles.\nContinue?"))
+								return;
+							
+							importJSS.setCurrentDirectory(last);
+							if(importJSS.showOpenDialog(Editor.this) == JFileChooser.APPROVE_OPTION) {
+								JSS jss = FileHandler.importJSS(last = importJSS.getSelectedFile());
+								if(jss != null) {
+									jsa.jsc.jss.set(jss);
+									viewer.repaint();
+								}
+							}
+						}),
+						eJSS = new Item("Export JSS", "export/save currently used style definitions", e -> {
+							if(jsa == null)
+								return;
+							
+							exportJSS.setCurrentDirectory(last);
+							if(exportJSS.showSaveDialog(Editor.this) == JFileChooser.APPROVE_OPTION)
+								FileHandler.exportJSS(jsa.jsc.jss.get(), last = exportJSS.getSelectedFile());
+						}),
+						null,
+						placeNote = new RadioItem("Place Notes", 'n', "clicking on the image creates notes", e -> {
+							viewer.setMode(PlacementMode.NOTE);
+						}),
+						placeText = new RadioItem("Place Text", 't', "clicking and dragging on the image creates text", e -> {
+							viewer.setMode(PlacementMode.TEXT);
+						})
+						// add another image
+				),
+				new SubMenu("Window",
+						new CheckItem("show Non-Text-Elements", 'h', "if disabled, hides notes and the border around text-elements", e -> {
+							CheckItem i = (CheckItem)e.getSource();
+							viewer.showNonTextElements(i.isSelected());
+						}).setSelected(),
+						new CheckItem("enable Highlighting", 'H', "darkens the unfocused areas", e -> {
+							CheckItem i = (CheckItem)e.getSource();
+							System.out.println(i.isSelected());
+						})
+				),
+				new SubMenu("Help",
+						new Item("Homepage (GitHub)", "opens the project website in your browser", e -> {
+							try {
+								Desktop.getDesktop().browse(new URI("https://github.com/friendlyOverlordDev/JScribe"));
+							} catch (Exception ex) {
+								Message.error("Failed to open the Homepage!", ex);
+							}
+						}),
+						null,
+						new Item("About JScribt", "opens a window with general infos about this program", e -> {
+							new About();
+						})
+				)/*,
+				new SubMenu("Support the Developer", e -> {
+					Message.ok("Support the Developer", "Thank you for the thought, unfortunately donations are currently disabled.");
+				})*/
 		));
 		
 		save.setEnabled(false);
 		saveAs.setEnabled(false);
 		saveArchive.setEnabled(false);
 		export.setEnabled(false);
+		iJSS.setEnabled(false);
+		eJSS.setEnabled(false);
+		
+		
+		ButtonGroup group = new ButtonGroup();
+		group.add(placeNote);
+		group.add(placeText);
+		
+		placeText.setSelected(true);
 		
 		
 		addWindowListener(new WindowListener() {
@@ -240,12 +332,6 @@ public class Editor extends JFrame implements Unserialzable, Window {
 			@Override
 			public void windowActivated(WindowEvent e) {}
 		});
-		
-		viewer = new ImageViewer();
-		add(new JScrollPane(viewer));
-		
-		data = new DataViewer();
-		add(data, BorderLayout.EAST);
 		
 		updateJSA(FileHandler.openJSA(new File("./test/doge.jsa")));
 		
@@ -290,6 +376,8 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		saveAs.setEnabled(true);
 		saveArchive.setEnabled(true);
 		export.setEnabled(true);
+		iJSS.setEnabled(true);
+		eJSS.setEnabled(true);
 	}
 	
 	void saveAs() {

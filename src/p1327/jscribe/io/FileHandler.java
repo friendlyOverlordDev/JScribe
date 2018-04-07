@@ -141,6 +141,7 @@ public class FileHandler {
 		return null;
 	}
 	
+	// export
 	public static boolean exportImg(JSArchive jsa, File img) {
 		try {
 			String name = img.getName();
@@ -200,6 +201,33 @@ public class FileHandler {
 			}
 		}catch(Exception e) {
 			Message.error("Import Error", e);
+		}
+		return false;
+	}
+	
+	// jss
+	public static JSS importJSS(File jss) {
+		try(FileInputStream fis = new FileInputStream(jss)){
+			JSS _jss = new JSS(fis);
+			fis.close();
+			return _jss;
+		}catch(Exception e) {
+			Message.error("Failed to Import JSS-File", e);
+		}
+		return null;
+	}
+	
+	public static boolean exportJSS(JSS jss, File out) {
+		String name = out.getName();
+		if(!name.endsWith(".jss"))
+			out = new File(out.getParent() + "/" + name + ".jss");
+		try(FileWriter fw = new FileWriter(out)){
+			
+			jss.toJSON().write(fw);
+			fw.close();
+			return true;
+		}catch(Exception e) {
+			Message.error("Failed to Export JSS-File", e);
 		}
 		return false;
 	}

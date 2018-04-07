@@ -35,6 +35,10 @@ public interface Window {
 		setLocation(p.x - topLeftSpace, p.y - topLeftSpace);
 	}
 	
+	default void center() {
+		center(getWidth(), getHeight());
+	}
+	
 	default void center(int width, int height) {
 		Rectangle rect = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration().getBounds();
 		if(width > rect.width)
@@ -48,6 +52,8 @@ public interface Window {
 	}
 	
 	void setSize(int width, int height);
-
 	void setLocation(int x, int y);
+	
+	int getWidth();
+	int getHeight();
 }

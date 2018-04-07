@@ -1,4 +1,4 @@
-package p1327.jscribe.util;
+package p1327.jscribe.io.data.prototype;
 
 /*
  * Copyright (c) 2018 friendlyOverlordDev
@@ -20,28 +20,26 @@ package p1327.jscribe.util;
  * 
  */
 
-import java.awt.GraphicsEnvironment;
+import java.util.Vector;
+import java.util.function.Consumer;
 
-public class Static {
+public class DeletableElement {
+
+	private final Vector<Consumer<DeletableElement>> deleteListener = new Vector<>();
 	
-	private Static() {}
+	public boolean addDeleteListener(Consumer<DeletableElement> l) {
+		return deleteListener.add(l);
+	}
 	
-	public static final String version = "0.6.2";
+	public boolean removeDeleteListener(Consumer<DeletableElement> l) {
+		return deleteListener.remove(l);
+	}
 	
-	public static final String[] supportedTypeList = {"png", "jpg", "jpeg", "gif"};
-	public static final String supportedTypes = String.join(", ", supportedTypeList);
-	
-	public static final String[] fonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
-	public static final String defaultRenderFont;
-	
-	static {
-		String font = "Comic Sans".toLowerCase(), drf = null;
-		for(String f : fonts)
-			if(f.toLowerCase().startsWith(font)) {
-				drf= f;
-			}
-		if(drf == null)
-			drf = "Comic Sans MS";
-		defaultRenderFont = drf;
+	/**
+	 * doesn't actually delete the note, however invokes all the delete listeners which should handle it.
+	 */
+	public void delete() {
+		for(Consumer<DeletableElement> l : deleteListener)
+			l.accept(this);
 	}
 }

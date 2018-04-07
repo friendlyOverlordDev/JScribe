@@ -23,53 +23,133 @@ package p1327.jscribe.ui;
 import java.awt.Event;
 import java.awt.Toolkit;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JRadioButtonMenuItem;
 import javax.swing.KeyStroke;
+import javax.swing.border.Border;
+import javax.swing.border.EmptyBorder;
 
 import p1327.jscribe.util.UIText;
 import p1327.jscribe.util.Unserialzable;
 
 public class Menu extends JMenuBar implements Unserialzable{
+
+	private static final short upper = 'A' - 'a';
+	private static final Border border = new EmptyBorder(0, 5, 0, 5);
 	
 	public Menu(SubMenu...subMenus) {
 		for(SubMenu sm : subMenus)
-			add(sm);
+			add(sm).setBorder(border);
 	}
 	
 	public static class SubMenu extends JMenu implements Unserialzable{
 		
+		
 		public SubMenu(String name, ActionListener listener) {
-			super(name);
-			addActionListener(listener);
+			this(name);
+			addMouseListener(new MouseListener() {
+				
+				@Override
+				public void mouseReleased(MouseEvent e) {}
+				
+				@Override
+				public void mousePressed(MouseEvent e) {}
+				
+				@Override
+				public void mouseExited(MouseEvent e) {}
+				
+				@Override
+				public void mouseEntered(MouseEvent e) {}
+				
+				@Override
+				public void mouseClicked(MouseEvent e) {
+					listener.actionPerformed(null);
+				}
+			});
 		}
 		
-		public SubMenu(String name, Item...items) {
-			super(name);
-			for(Item i : items)
+		public SubMenu(String name, JMenuItem...items) {
+			this(name);
+			for(JMenuItem i : items)
 				if(i != null)
 					add(i);
 				else
 					addSeparator();
 		}
+		
+		private SubMenu(String name) {
+			super(name);
+		}
 	}
 	
-	public static class Item extends JMenuItem implements Unserialzable{
-		
-		private static final short upper = 'A' - 'a';
+	public static class Item extends JMenuItem implements MenuItemInit, Unserialzable{
 		
 		public Item(String name, String tooltip, ActionListener listener) {
 			super(name);
-			setToolTipText(UIText.displayable(tooltip));
-			addActionListener(listener);
+			init(tooltip, listener);
 		}
 		
 		public Item(String name, char shortcut, String tooltip, ActionListener listener) {
 			super(name);
+			init(shortcut, tooltip, listener);
+		}
+	}
+	
+	public static class RadioItem extends JRadioButtonMenuItem implements MenuItemInit, Unserialzable{
+
+		public RadioItem(String name, String tooltip, ActionListener listener) {
+			super(name);
+			init(tooltip, listener);
+		}
+		
+		public RadioItem(String name, char shortcut, String tooltip, ActionListener listener) {
+			super(name);
+			init(shortcut, tooltip, listener);
+		}
+		
+		public RadioItem setSelected() {
+			setSelected(true);
+			return this;
+		}
+	}
+	
+	public static class CheckItem extends JCheckBoxMenuItem implements MenuItemInit, Unserialzable{
+
+		public CheckItem(String name, String tooltip, ActionListener listener) {
+			super(name);
+			init(tooltip, listener);
+		}
+		
+		public CheckItem(String name, char shortcut, String tooltip, ActionListener listener) {
+			super(name);
+			init(shortcut, tooltip, listener);
+		}
+		
+		public CheckItem setSelected() {
+			setSelected(true);
+			return this;
+		}
+	}
+	
+	private static interface MenuItemInit {
+		
+		void setToolTipText(String text);
+		void addActionListener(ActionListener l);
+		void setAccelerator(KeyStroke keyStroke);
+		
+		default void init(String tooltip, ActionListener listener) {
 			setToolTipText(UIText.displayable(tooltip));
 			addActionListener(listener);
+		}
+		
+		default void init(char shortcut, String tooltip, ActionListener listener) {
+			init(tooltip, listener);
 			if(shortcut >= 'A' && shortcut <= 'Z') {
 				setAccelerator(KeyStroke.getKeyStroke(shortcut, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask() | Event.SHIFT_MASK));
 				return;

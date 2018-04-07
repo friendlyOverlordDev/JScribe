@@ -48,6 +48,10 @@ public class JSImg implements JSONable {
 		this.img = img.getString(IMG);
 		texts = JSON.extractAsJSONObjectToVector(img.getJSONArray(TEXTS), o -> new Text(o));
 		notes = JSON.extractAsJSONObjectToVector(img.getJSONArray(NOTES), o -> new Note(o));
+		for(Text t : texts)
+			t.addDeleteListener(texts::remove);
+		for(Note n : notes)
+			n.addDeleteListener(notes::remove);
 	}
 	
 	@Override

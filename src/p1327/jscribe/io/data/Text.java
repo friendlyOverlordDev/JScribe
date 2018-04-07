@@ -22,18 +22,19 @@ package p1327.jscribe.io.data;
 
 import java.awt.Dimension;
 import java.awt.Point;
-
 import java.util.Vector;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import p1327.jscribe.io.data.prototype.DeletableElement;
 import p1327.jscribe.util.JSON;
 import p1327.jscribe.util.JSONable;
+import p1327.jscribe.util.data.BoolProperty;
 import p1327.jscribe.util.data.IntProperty;
 import p1327.jscribe.util.data.Property;
 
-public class Text implements JSONable {
+public class Text extends DeletableElement implements JSONable {
 	
 	private static final String TEXT = "text",
 								X = "x",
@@ -45,6 +46,8 @@ public class Text implements JSONable {
 	public final Property<String> text;
 	public final IntProperty x, y, w, h;
 	public final Vector<SimpleNote> notes;
+	
+	public final BoolProperty isInvalid = new BoolProperty();
 	
 	public Text(String text, int x, int y, int w, int h) {
 		this.text = new Property<>(text);

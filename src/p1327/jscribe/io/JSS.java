@@ -21,50 +21,42 @@ package p1327.jscribe.io;
  */
 
 import java.io.InputStream;
-
-import java.util.Vector;
+import java.util.HashMap;
 
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
-import p1327.jscribe.io.data.JSImg;
+import p1327.jscribe.io.data.Style;
 import p1327.jscribe.util.JSON;
 import p1327.jscribe.util.JSONable;
-import p1327.jscribe.util.data.Property;
 
-public class JSC implements JSONable{
+public class JSS implements JSONable {
+
+	private static final String MAIN = "main",
+								TAGS = "tags";
 	
-	private static final int version = 1;
+	public final Style main;
+	public final HashMap<String, Style> tags;
 	
-	private static final String VERSION = "version",
-								IMGS = "imgs",
-								STYLES = "styls";
-	
-	public final Vector<JSImg> imgs;
-	public final Property<JSS> jss; 
-	
-	public JSC() {
-		imgs = new Vector<>();
-		jss = new Property<>(new JSS());
+	public JSS() {
+		main = new Style();
+		tags = new HashMap<>();
 	}
 	
-	public JSC(InputStream is) {
+	public JSS(InputStream is) {
 		this(new JSONObject(new JSONTokener(is)));
 	}
 	
-	private JSC(JSONObject jsc) {
-		if(jsc.getInt(VERSION) == 0)
-			jsc.put(STYLES, new JSS().toJSON());
-		imgs = JSON.extractAsJSONObjectToVector(jsc.getJSONArray(IMGS), o -> new JSImg(o));
-		jss = new Property<>(new JSS(jsc.getJSONObject(STYLES)));
+	public JSS(JSONObject jss) {
+		main = new Style(jss.getJSONObject(MAIN));
+		tags = JSON.extractAsJSONObjectToMap(jss.getJSONObject(TAGS), o -> new Style(o));
 	}
 	
 	@Override
 	public JSONObject toJSON() {
 		JSONObject json = new JSONObject();
-		json.put(VERSION, version);
-		json.put(IMGS, JSON.packJSONableVector(imgs));
-		json.put(STYLES, jss.get().toJSON());
+		json.put(MAIN, main.toJSON());
+		json.put(TAGS, JSON.packJSONableMap(tags));
 		return json;
 	}
 }

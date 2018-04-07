@@ -23,17 +23,19 @@ package p1327.jscribe.io.data;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import p1327.jscribe.io.data.prototype.DeletableElement;
 import p1327.jscribe.util.JSONable;
 import p1327.jscribe.util.data.BoolProperty;
 import p1327.jscribe.util.data.Property;
 
-public class SimpleNote implements JSONable {
+public class SimpleNote extends DeletableElement implements JSONable {
 	
 	private static final String INFO = "info",
 								CHECKED = "checked";
 
 	public final Property<String> info;
 	public final BoolProperty checked;
+	
 	
 	public SimpleNote(String info) {
 		this.info = new Property<>(info);

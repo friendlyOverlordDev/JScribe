@@ -21,6 +21,8 @@ package p1327.jscribe.ui;
  */
 
 import java.awt.Color;
+import java.awt.Container;
+import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
@@ -46,11 +48,14 @@ public class NotePoint extends JComponent implements Unserialzable {
 	public NotePoint(Note _note) {
 		setSize(size, size);
 		setForeground(Color.red);
+		setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		
 		addMouseListener(new MouseListener() {
 			
 			@Override
 			public void mouseReleased(MouseEvent e) {
+				if(mode == EditMode.OPEN)
+					Editor.$.data.setActive(note);
 				mode = EditMode.NONE;
 			}
 			
@@ -107,6 +112,12 @@ public class NotePoint extends JComponent implements Unserialzable {
 		_note.x.add(e -> setLocation(e.newVal, getY() + move));
 		_note.y.add(e -> setLocation(getX() + move, e.newVal));
 		_note.info.add(e -> setToolTipText(UIText.displayable(e.newVal)));
+		
+		_note.addDeleteListener(n -> {
+			Container c = getParent();
+			c.remove(this);
+			c.repaint();
+		});
 	}
 	
 	public Note getNote() {
@@ -120,6 +131,8 @@ public class NotePoint extends JComponent implements Unserialzable {
 	
 	@Override
 	protected void paintComponent(Graphics g) {
+		if(!Editor.$.viewer.areNonTextElementsVisible())
+			return;
 		super.paintComponent(g);
 		g.setColor(Color.black);
 		g.drawLine(1, 0, size - 1, size - 2);

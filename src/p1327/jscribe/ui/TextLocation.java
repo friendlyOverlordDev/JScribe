@@ -21,6 +21,7 @@ package p1327.jscribe.ui;
  */
 
 import java.awt.Color;
+import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.Point;
@@ -41,6 +42,8 @@ public class TextLocation extends JComponent implements Unserialzable {
 	private static final int border2 = border * 2;
 	private static final int resizearea = 5;
 	
+	static final Cursor defaultCursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR);
+	
 	final Text text;
 	
 	Direction dir = Direction.NONE;
@@ -56,11 +59,14 @@ public class TextLocation extends JComponent implements Unserialzable {
 	public TextLocation(Text _text) {
 		setSize(0, 0);
 		setForeground(Color.white);
+		setCursor(defaultCursor);
 		
 		addMouseListener(new MouseListener() {
 			
 			@Override
 			public void mouseReleased(MouseEvent e) {
+				if(mode == EditMode.OPEN)
+					Editor.$.data.setActive(text);
 				mode = EditMode.NONE;
 			}
 			
@@ -117,7 +123,7 @@ public class TextLocation extends JComponent implements Unserialzable {
 							setCursor(Cursor.getPredefinedCursor(Cursor.S_RESIZE_CURSOR));
 							break;
 						default:
-							setCursor(Cursor.getDefaultCursor());
+							setCursor(defaultCursor);
 							break;
 					}
 				}
@@ -199,6 +205,12 @@ public class TextLocation extends JComponent implements Unserialzable {
 		_text.w.add(e -> setSize(e.newVal, getHeight() - border2));
 		_text.h.add(e -> setSize(getWidth() - border2, e.newVal));
 		_text.text.add(e -> repaint());
+		
+		_text.addDeleteListener(n -> {
+			Container c = getParent();
+			c.remove(this);
+			c.repaint();
+		});
 	}
 	
 	public Text getText() {
@@ -240,20 +252,19 @@ public class TextLocation extends JComponent implements Unserialzable {
 	@Override
 	protected void paintComponent(Graphics g) {
 		super.paintComponent(g);
-		g.setColor(Color.black);
-		int w = getWidth(),
-			h = getHeight();
-		g.drawRect(0, 0, w - 1, h - 1);
-		g.drawRect(2, 2, w - 5, h - 5);
-		
-		
-		
-		g.setColor(getForeground());
-		g.drawRect(1, 1, w - 3, h - 3);
-		
+		if(Editor.$.viewer.areNonTextElementsVisible()) {
+			int w = getWidth(),
+				h = getHeight();
+			g.setColor(Color.black);
+			g.drawRect(0, 0, w - 1, h - 1);
+			g.drawRect(2, 2, w - 5, h - 5);
+			
+			g.setColor(getForeground());
+			g.drawRect(1, 1, w - 3, h - 3);
+		}
 		// write the text last, since it enables a few features for better drawing which would interfere with the commands above
 		Renderer tr = new Renderer(g);
-		tr.writeLocal(text, border);
+		tr.writeLocal(text, border, getWidth() - border2, getHeight() - border2);
 	}
 	
 	enum Direction{

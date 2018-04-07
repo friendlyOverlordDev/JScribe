@@ -20,6 +20,8 @@ package p1327.jscribe.util;
  * 
  */
 
+import java.util.HashMap;
+import java.util.Map.Entry;
 import java.util.Vector;
 import java.util.function.Function;
 
@@ -38,10 +40,25 @@ public class JSON {
 		return out;
 	}
 	
+	public static <T> HashMap<String, T> extractAsJSONObjectToMap(JSONObject obj, Function<JSONObject, T> converter){
+		int l = obj.length();
+		HashMap<String, T> map = new HashMap<>(l);
+		for(String key : obj.keySet()) 
+			map.put(key, converter.apply(obj.getJSONObject(key)));
+		return map;
+	}
+	
 	public static JSONArray packJSONableVector(Vector<? extends JSONable> data) {
 		JSONArray array = new JSONArray();
 		for(int i = 0, l = data.size(); i < l; i++)
 			array.put(data.get(i).toJSON());
 		return array;
+	}
+	
+	public static JSONObject packJSONableMap(HashMap<String, ? extends JSONable> data) {
+		JSONObject o = new JSONObject();
+		for(Entry<String, ? extends JSONable> entry : data.entrySet())
+			o.put(entry.getKey(), entry.getValue().toJSON());
+		return o;
 	}
 }

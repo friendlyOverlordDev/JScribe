@@ -35,6 +35,7 @@ import javax.swing.JPanel;
 import p1327.jscribe.io.data.JSImg;
 import p1327.jscribe.io.data.Note;
 import p1327.jscribe.io.data.Text;
+import p1327.jscribe.ui.window.Editor;
 import p1327.jscribe.util.Unserialzable;
 
 public class ImageViewer extends JPanel implements Unserialzable{
@@ -49,8 +50,8 @@ public class ImageViewer extends JPanel implements Unserialzable{
 	final Vector<TextLocation> locations;
 	TextLocation newText = null;
 	Point start = null;
+	private boolean nonTextElementsVisible = true;
 	
-//	PlacementMode pMode = PlacementMode.NOTE;	
 	PlacementMode pMode = PlacementMode.TEXT;
 	
 	public ImageViewer() {
@@ -73,13 +74,15 @@ public class ImageViewer extends JPanel implements Unserialzable{
 					if(newPoint == null)
 						return;
 					newPoint.note.setLocation(e.getPoint());
-//					newPoint.openWindow();
+					Editor.$.data.setActive(newPoint.note);
 				}else if(pMode == PlacementMode.TEXT){
 					if(newText == null)
 						return;
 					newText.calcSize(start, fixPoint(e.getPoint()));
-//					newText.openWindow();
+					Editor.$.data.setActive(newText.text);
 				}
+				newPoint = null;
+				newText = null;
 			}
 			
 			@Override
@@ -97,18 +100,24 @@ public class ImageViewer extends JPanel implements Unserialzable{
 				if(pMode == PlacementMode.NOTE) {
 					Note n = new Note("", 0, 0);
 					newPoint = new NotePoint(n);
-					n.setLocation(m);
 					add(newPoint);
 					points.add(newPoint);
-					jsimg.notes.add(newPoint.getNote());
+					jsimg.notes.add(n);
+					Editor.$.data.addNote(n);
+					n.setLocation(m);
+					n.addDeleteListener(jsimg.notes::remove);
+					
 					newPoint.repaint();
 				}else if(pMode == PlacementMode.TEXT){
 					Text t = new Text("", 0, 0, 0, 0);
 					newText = new TextLocation(t);
-					t.setLocation(start = m);
 					add(newText);
 					locations.add(newText);
 					jsimg.texts.add(newText.getText());
+					Editor.$.data.addText(t);
+					t.setLocation(start = m);
+					t.addDeleteListener(jsimg.texts::remove);
+					
 					newText.repaint();
 				}
 			}
@@ -130,9 +139,9 @@ public class ImageViewer extends JPanel implements Unserialzable{
 			
 			@Override
 			public void mouseDragged(MouseEvent e) {
-				if(newPoint != null)
+				if(pMode == PlacementMode.NOTE && newPoint != null)
 					newPoint.note.setLocation(fixPoint(e.getPoint()));
-				if(newText != null)
+				if(pMode == PlacementMode.TEXT && newText != null)
 					newText.calcSize(start, fixPoint(e.getPoint()));
 			}
 		});
@@ -193,5 +202,55 @@ public class ImageViewer extends JPanel implements Unserialzable{
 		super.paintComponent(g);
 		if(img != null)
 			g.drawImage(img, 0, 0, this);
+	}
+	
+	public void setMode(PlacementMode m) {
+		pMode = m;
+	}
+	
+	public void showNonTextElements(boolean b) {
+		if(b == nonTextElementsVisible)
+			return;
+		nonTextElementsVisible = b;
+		repaint();
+	}
+	
+	public boolean areNonTextElementsVisible() {
+		return nonTextElementsVisible;
+	}
+
+	private static final int area = 100;
+	public Text convertNoteToText(Note n) {
+		int x = n.x.get(),
+			y = n.y.get();
+		x -= area / 2;
+		y -= area / 2;
+		if(x < 0)
+			x = 0;
+		if(y < 0)
+			y = 0;
+		int w = x + area,
+			h = y + area,
+			wImg = getImgWidth(),
+			hImg = getImgHeight();
+		if(w > wImg)
+			x -= w - wImg;
+		if(h > hImg)
+			y -= h - hImg;
+		w = area;
+		h = area;
+		
+		Text t = new Text(n.info.get(), x, y, w, h);
+		
+		TextLocation nt = new TextLocation(t);
+		add(nt);
+		locations.add(nt);
+		jsimg.texts.add(nt.getText());
+		Editor.$.data.addText(t);
+		t.addDeleteListener(jsimg.texts::remove);
+		
+		n.delete();
+		
+		return null;
 	}
 }

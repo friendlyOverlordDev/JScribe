@@ -33,6 +33,10 @@ public class Message {
 		e.printStackTrace();
 	}
 	
+	public static void ok(String title, String message) {
+		JOptionPane.showMessageDialog(null, message, title, JOptionPane.PLAIN_MESSAGE);
+	}
+	
 	/**
 	 * Asks a question, if answered with yes, returns true, otherwise false
 	 * @param title - the title of the dialog
