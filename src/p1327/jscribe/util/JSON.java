@@ -32,6 +32,14 @@ public class JSON {
 	
 	private JSON() {}
 	
+	public static Vector<String> extractStrings(JSONArray array){
+		int l = array.length();
+		Vector<String> out = new Vector<String>(l);
+		for(int i = 0; i < l; i++)
+			out.add(array.getString(i));
+		return out;
+	}
+	
 	public static <T> Vector<T> extractAsJSONObjectToVector(JSONArray array, Function<JSONObject, T> converter) {
 		int l = array.length();
 		Vector<T> out = new Vector<T>(l);
@@ -48,10 +56,17 @@ public class JSON {
 		return map;
 	}
 	
+	public static JSONArray packStrings(Vector<String> data) {
+		JSONArray array = new JSONArray();
+		for(String s : data)
+			array.put(s);
+		return array;
+	}
+	
 	public static JSONArray packJSONableVector(Vector<? extends JSONable> data) {
 		JSONArray array = new JSONArray();
-		for(int i = 0, l = data.size(); i < l; i++)
-			array.put(data.get(i).toJSON());
+		for(JSONable j : data)
+			array.put(j.toJSON());
 		return array;
 	}
 	

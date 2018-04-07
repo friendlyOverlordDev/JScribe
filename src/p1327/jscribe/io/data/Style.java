@@ -20,6 +20,7 @@ package p1327.jscribe.io.data;
  * 
  */
 
+import java.awt.Color;
 import java.awt.Font;
 
 import org.json.JSONObject;
@@ -58,14 +59,14 @@ public class Style implements JSONable{
 								USE_PREFIX = "use__";
 
 	public final Property<String> font;
+	public final Property<Color> color,
+								 outline;
 	public final DoubleProperty rotation,
 								outlineWidth;
 	public final IntProperty size,
 							 style,
-							 color,
 							 xAlign,
 							 yAlign,
-							 outline,
 							 lineHeight;
 	public final BoolProperty useFont,
 							  useRotation,
@@ -85,10 +86,10 @@ public class Style implements JSONable{
 		outlineWidth = new DoubleProperty(2);
 		size = new IntProperty(16);
 		style = new IntProperty(PLAIN);
-		color = new IntProperty(0);
+		color = new Property<>(Color.black);
 		xAlign = new IntProperty(CENTER);
 		yAlign = new IntProperty(CENTER);
-		outline = new IntProperty(0xFFFFFF);
+		outline = new Property<>(Color.white);
 		lineHeight = new IntProperty(0);
 
 		useFont = new BoolProperty();
@@ -105,14 +106,14 @@ public class Style implements JSONable{
 	
 	public Style(JSONObject data) {
 		font = new Property<>(data.getString(FONT));
+		color = new Property<>(new Color(data.getInt(COLOR)));
+		outline = new Property<>(new Color(data.getInt(OUTLINE)));
 		rotation = new DoubleProperty(data.getDouble(ROTATION));
 		outlineWidth = new DoubleProperty(data.getDouble(OL_WIDTH));
 		size = new IntProperty(data.getInt(SIZE));
 		style = new IntProperty(data.getInt(STYLE));
-		color = new IntProperty(data.getInt(COLOR));
 		xAlign = new IntProperty(data.getInt(X_ALIGN));
 		yAlign = new IntProperty(data.getInt(Y_ALIGN));
-		outline = new IntProperty(data.getInt(OUTLINE));
 		lineHeight = new IntProperty(data.getInt(LINE_HEIGHT));
 
 		useFont = new BoolProperty(data.getBoolean(USE_PREFIX + FONT));
@@ -131,14 +132,14 @@ public class Style implements JSONable{
 	public JSONObject toJSON() {
 		JSONObject json = new JSONObject();
 		json.put(FONT, font.get());
+		json.put(COLOR, color.get().getRGB());
+		json.put(OUTLINE, outline.get().getRGB());
 		json.put(ROTATION, rotation.get());
 		json.put(OL_WIDTH, outlineWidth.get());
 		json.put(SIZE, size.get());
 		json.put(STYLE, style.get());
-		json.put(COLOR, color.get());
 		json.put(X_ALIGN, xAlign.get());
 		json.put(Y_ALIGN, yAlign.get());
-		json.put(OUTLINE, outline.get());
 		json.put(LINE_HEIGHT, lineHeight.get());
 		
 		json.put(USE_PREFIX + FONT, useFont.get());

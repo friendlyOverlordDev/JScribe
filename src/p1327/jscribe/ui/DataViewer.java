@@ -95,6 +95,7 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 			texts.add(new TextViewer(this, t));
 		notesTitle.setText("Notes (" + img.notes.size() + ")");
 		textsTitle.setText("Text (" + img.texts.size() + ")");
+		repaint();
 	}
 	
 	public void addNote(Note n) {

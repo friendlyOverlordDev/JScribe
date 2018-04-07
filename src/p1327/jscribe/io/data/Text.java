@@ -41,11 +41,13 @@ public class Text extends DeletableElement implements JSONable {
 								Y = "y",
 								W = "w",
 								H = "h",
-								NOTES = "notes";
+								NOTES = "notes",
+								TAGS = "tags";
 
 	public final Property<String> text;
 	public final IntProperty x, y, w, h;
 	public final Vector<SimpleNote> notes;
+	public final Vector<String> tags;
 	
 	public final BoolProperty isInvalid = new BoolProperty();
 	
@@ -56,6 +58,7 @@ public class Text extends DeletableElement implements JSONable {
 		this.w = new IntProperty(w);
 		this.h = new IntProperty(h);
 		notes = new Vector<>();
+		tags = new Vector<>();
 	}
 	
 	public Text(JSONObject text) throws JSONException {
@@ -65,6 +68,7 @@ public class Text extends DeletableElement implements JSONable {
 		w = new IntProperty(text.getInt(W));
 		h = new IntProperty(text.getInt(H));
 		notes = JSON.extractAsJSONObjectToVector(text.getJSONArray(NOTES), o -> new SimpleNote(o));
+		tags = JSON.extractStrings(text.getJSONArray(TAGS));
 	}
 	
 	@Override
@@ -76,6 +80,7 @@ public class Text extends DeletableElement implements JSONable {
 		json.put(W, w.get());
 		json.put(H, h.get());
 		json.put(NOTES, JSON.packJSONableVector(notes));
+		json.put(TAGS, JSON.packStrings(tags));
 		return json;
 	}
 	

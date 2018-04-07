@@ -26,11 +26,13 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.File;
 import java.net.URI;
+import java.util.Vector;
 
 import javax.swing.ButtonGroup;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
@@ -45,6 +47,7 @@ import p1327.jscribe.ui.Menu.CheckItem;
 import p1327.jscribe.ui.Menu.Item;
 import p1327.jscribe.ui.Menu.RadioItem;
 import p1327.jscribe.ui.Menu.SubMenu;
+import p1327.jscribe.ui.Pagination;
 import p1327.jscribe.ui.PlacementMode;
 import p1327.jscribe.util.Message;
 import p1327.jscribe.util.Static;
@@ -69,6 +72,7 @@ public class Editor extends JFrame implements Unserialzable, Window {
 							   exportJSS;
 	
 	public final ImageViewer viewer;
+	private final Pagination pages;
 	public final DataViewer data;
 	
 	private final Item save, saveAs, saveArchive, export, iJSS, eJSS;
@@ -82,14 +86,21 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		$ = this;
 		setTitle("JScribe");
 		setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
-//		setLayout(null);
 		center(1200, 900);
 		
 		viewer = new ImageViewer();
 		add(new JScrollPane(viewer));
 		
+		JPanel wrapper = new JPanel(new BorderLayout());
+		pages = new Pagination();
+		pages.currentPage.add(e -> {
+			setImgActive(jsa.jsc.imgs.get(e.newVal - 1));
+		});
+		wrapper.add(pages, BorderLayout.NORTH);
+		
 		data = new DataViewer();
-		add(data, BorderLayout.EAST);
+		wrapper.add(data);
+		add(wrapper, BorderLayout.EAST);
 		
 		openJSC = new JFileChooser();
 		openJSC.setDialogTitle("Select .jsc-File to Open...");
@@ -158,11 +169,11 @@ public class Editor extends JFrame implements Unserialzable, Window {
 						save = new Item("Save", 's', "when already saved, overrides it,\notherwise saves as a new .jsc-file", e -> {
 							if(jsa == null)
 								return;
-							if(jsa.name != null || jsa.jscName != null)
-								if(FileHandler.save(jsa)) {
+							if(jsa.name != null || jsa.jscName != null) {
+								if(FileHandler.save(jsa))
 									unsaved = false;
-									return;
-								}
+								return;
+							}
 							
 							// file was never saved
 							saveAs();
@@ -285,10 +296,13 @@ public class Editor extends JFrame implements Unserialzable, Window {
 						new Item("About JScribt", "opens a window with general infos about this program", e -> {
 							new About();
 						})
-				)/*,
-				new SubMenu("Support the Developer", e -> {
-					Message.ok("Support the Developer", "Thank you for the thought, unfortunately donations are currently disabled.");
-				})*/
+				),
+				new SubMenu("Donate", e -> {
+					new SupportDev();
+				}),
+				new SubMenu("test", e -> {
+					new StyleEditor();
+				})
 		));
 		
 		save.setEnabled(false);
@@ -366,9 +380,13 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		if(jsa == null)
 			return;
 		this.jsa = jsa;
-		JSImg i = jsa.jsc.imgs.get(0);
-		viewer.setImage(jsa.get(0), i);
-		data.setImage(i);
+		
+		Vector<JSImg> imgs = jsa.jsc.imgs;
+		
+		pages.maxPage.set(imgs.size());
+		pages.currentPage.set(1);
+		
+		setImgActive(imgs.get(0));
 		
 		unsaved = false;
 		
@@ -378,6 +396,12 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		export.setEnabled(true);
 		iJSS.setEnabled(true);
 		eJSS.setEnabled(true);
+	}
+	
+	public void setImgActive(JSImg i) {
+		viewer.setImage(jsa.get(0), i);
+		data.setImage(i);
+		setTitle("JScribe - " + i.img);
 	}
 	
 	void saveAs() {
