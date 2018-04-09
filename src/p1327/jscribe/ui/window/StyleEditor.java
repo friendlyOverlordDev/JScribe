@@ -106,6 +106,8 @@ public class StyleEditor extends JDialog implements Window, Unserialzable {
 		ArrowSeparator as = new ArrowSeparator();
 		StyleElement se = new StyleElement(ts);
 		se.removeListener.add((style, tag) -> {
+			if(!Message.yesno("Remove style?", "Do you want to remove the style '" + tag + "' from this element?"))
+				return;
 			StyleEditor.this.ts.remove(style);
 			
 			parent.remove(as);
