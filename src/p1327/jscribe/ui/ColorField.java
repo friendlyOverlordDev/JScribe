@@ -22,22 +22,25 @@ package p1327.jscribe.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 
 import javax.swing.BorderFactory;
 import javax.swing.JColorChooser;
 import javax.swing.JPanel;
 import javax.swing.border.Border;
+import javax.swing.border.EmptyBorder;
 
+import p1327.jscribe.ui.listener.SimpleMouseListener;
 import p1327.jscribe.util.Unserialzable;
 import p1327.jscribe.util.data.Property;
 
 public class ColorField extends JPanel implements Unserialzable{
 	
 	private static final Border border = BorderFactory.createLoweredBevelBorder();
+	private static final Border disabled = new EmptyBorder(border.getBorderInsets(null)); 
 	
 	public final Property<Color> color;
+	
+	private final JPanel inner;
 	
 	public ColorField() {
 		this(Color.white);
@@ -47,33 +50,31 @@ public class ColorField extends JPanel implements Unserialzable{
 		setLayout(new BorderLayout());
 		setBorder(border);
 		
-		final JPanel inner = new JPanel();
+		inner = new JPanel();
 		inner.setBackground(c);
 		add(inner);
 		
 		color = new Property<>(c);
 		color.add(e -> inner.setBackground(e.newVal));
 		
-		addMouseListener(new MouseListener() {
-			
-			@Override
-			public void mouseReleased(MouseEvent e) {}
-			
-			@Override
-			public void mousePressed(MouseEvent e) {}
-			
-			@Override
-			public void mouseExited(MouseEvent e) {}
-			
-			@Override
-			public void mouseEntered(MouseEvent e) {}
-			
-			@Override
-			public void mouseClicked(MouseEvent e) {
-				Color c = JColorChooser.showDialog(null, "Select a Color", color.get());
-				if(c != null)
-					color.set(c);
+		addMouseListener(new SimpleMouseListener(e -> {
+			if(isEnabled()) {
+				Color _c = JColorChooser.showDialog(null, "Select a Color", color.get());
+				if(_c != null)
+					color.set(_c);
 			}
-		});
+		}));
+	}
+	
+	@Override
+	public void setEnabled(boolean enabled) {
+		super.setEnabled(enabled);
+		if(enabled) {
+			setBorder(border);
+			inner.setBackground(color.get());
+		}else {
+			setBorder(disabled);
+			inner.setBackground(color.get().darker());
+		}
 	}
 }

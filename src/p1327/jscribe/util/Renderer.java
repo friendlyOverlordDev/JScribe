@@ -21,24 +21,24 @@ package p1327.jscribe.util;
  */
 
 import java.awt.BasicStroke;
-import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-import java.awt.Shape;
+import java.awt.font.FontRenderContext;
 import java.awt.font.GlyphVector;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Area;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 
+import p1327.jscribe.io.data.Style;
 import p1327.jscribe.io.data.Text;
 
 public class Renderer {
 	
 	private final Graphics2D g2d;
-	private Font font = new Font(Static.defaultRenderFont, Font.PLAIN, 20);
-	private Color color = Color.black;
-	private FontMetrics fm;
 	
 	public Renderer(Graphics g) {
 		this((Graphics2D) g);
@@ -55,16 +55,14 @@ public class Renderer {
 	    g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
 	    g2d.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
 
-		g2d.setFont(font);
-	    fm = g2d.getFontMetrics();
 	}
 	
-	public void writeLocal(Text t, int offset, int w, int h) {
-		t.isInvalid.set(!write(t.text.get(), offset, offset, w, h));
+	public void writeLocal(Text t, int offset, int w, int h, Style s) {
+		t.isInvalid.set(!write(t.text.get(), offset, offset, w, h, s));
 	}
 	
-	public void write(Text t) {
-		t.isInvalid.set(!write(t.text.get(), t.x.get(), t.y.get(), t.w.get(), t.h.get()));
+	public void write(Text t, Style s) {
+		t.isInvalid.set(!write(t.text.get(), t.x.get(), t.y.get(), t.w.get(), t.h.get(), s));
 	}
 
 	/**
@@ -77,11 +75,15 @@ public class Renderer {
 	 * @param h - height of the rect
 	 * @return true, if the text fitts into the rect, false if the height of the text is bigger than the given height.
 	 */
-	public boolean write(String text, int x, int y, int w, int h) {
+	public boolean write(String text, int x, int y, int w, int h, Style s) {
+		Font f = new Font(s.font.get(), s.style.get(), s.size.get());
+		FontMetrics fm = g2d.getFontMetrics(f);
+		FontRenderContext frc = fm.getFontRenderContext();
 		String[] lines = text.split("\n"), words;
 		char[] chars;
-		int height = fm.getHeight(), lineCount = 0;
+		int height = fm.getHeight() + s.lineHeight.get(), lineCount = 0;
 		String newLine, oldNewLine;
+		Area a = new Area();
 		for(String line : lines) {
 			int lineLength = fm.stringWidth(line);
 			if(lineLength > w) {
@@ -92,7 +94,7 @@ public class Renderer {
 					while(fm.stringWidth(newLine) > w) {
 						oldNewLine = newLine;
 						if(line.length() > 0) {
-							writeLine(line, x, y + height * lineCount);
+							a.add(xAlign(prepareLine(line, x, y + height * lineCount, f, frc), w, s.xAlign.get()));
 							lineCount++;
 							newLine = words[i];
 							line = ""; // empty it since we enter a new line
@@ -103,11 +105,11 @@ public class Renderer {
 								newLine = line + chars[j] + "-";
 								if(fm.stringWidth(newLine) > w) {
 									if(line.length() > 0) {
-										writeLine(line + "-", x, y + height * lineCount);
+										a.add(xAlign(prepareLine(line + "-", x, y + height * lineCount, f, frc), w, s.xAlign.get()));
 										lineCount++;
 										line = Character.toString(chars[j]);
 									} else {
-										writeLine(newLine, x, y + height * lineCount);
+										a.add(xAlign(prepareLine(newLine, x, y + height * lineCount, f, frc), w, s.xAlign.get()));
 										lineCount++;
 										line = "";
 									}
@@ -122,21 +124,75 @@ public class Renderer {
 					line = newLine + " ";
 				}
 			}
-			writeLine(line, x, y + height * lineCount);
+			a.add(xAlign(prepareLine(line, x, y + height * lineCount, f, frc), w, s.xAlign.get()));
 			lineCount++;
 		}
-		return y + font.getSize2D() + height * (lineCount - 1) < h;
+		yAlign(a, h, s.yAlign.get());
+		rotate(a, s.rotation.get());
+		
+//		g2d.setStroke(new BasicStroke((float) s.outlineWidth.get(), BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER)); // is the default, but generates weird spikes on "W"
+		g2d.setStroke(new BasicStroke((float) s.outlineWidth.get(), BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND));
+		g2d.setColor(s.outline.get());
+		g2d.draw(a);
+		g2d.setColor(s.color.get());
+		g2d.fill(a);
+		return y + f.getSize2D() + height * (lineCount - 1) < h;
 	}
 	
-	public void writeLine(String text, int x, int y) {
-		GlyphVector gv = font.createGlyphVector(fm.getFontRenderContext(), text);
-		Shape s = gv.getOutline(x, y + font.getSize2D());
-		g2d.setStroke(new BasicStroke(2f));
-		g2d.setColor(Color.red);
-		g2d.draw(s);
-		g2d.setColor(color);
-		g2d.fill(s);
-//		g2d.drawString(text, x, y + font.getSize2D());
+	private Area prepareLine(String text, int x, int y, Font f, FontRenderContext frc) {
+		if(text.length() < 1)
+			text = " ";
+		GlyphVector gv = f.createGlyphVector(frc, text);
+		return new Area(gv.getOutline(x, y + f.getSize2D()));
+	}
+	
+	private Area xAlign(Area a, int width, int alignment) {
+		if(alignment == Style.BOTTOM) {
+			Rectangle2D rect = a.getBounds2D();
+			AffineTransform t = new AffineTransform();
+			t.translate(width - rect.getWidth(), 0);
+			a.transform(t);
+		} else if(alignment == Style.CENTER) {
+			Rectangle2D rect = a.getBounds2D();
+			AffineTransform t = new AffineTransform();
+			t.translate((width - rect.getWidth()) / 2, 0);
+			a.transform(t);
+		}
+		return a;
+	}
+	
+	private Area rotate(Area a, double rotation) {
+		if(-0.001 < rotation && rotation < 0.001)
+			return a;
+		Rectangle2D rect = a.getBounds2D();
+		double x = rect.getCenterX(),
+			   y = rect.getCenterY();
+		AffineTransform transform = new AffineTransform();
+		transform.translate(-x, -y);
+		a.transform(transform);
+		transform = new AffineTransform();
+		transform.rotate(rotation * Math.PI / 180);
+		a.transform(transform);
+		transform = new AffineTransform();
+		transform.translate(x, y);
+		a.transform(transform);
+		return a;
+	}
+	
+	private Area yAlign(Area a, int height, int alignment) {
+
+		if(alignment == Style.RIGHT) {
+			Rectangle2D rect = a.getBounds2D();
+			AffineTransform t = new AffineTransform();
+			t.translate(0, height - rect.getHeight());
+			a.transform(t);
+		} else if(alignment == Style.CENTER) {
+			Rectangle2D rect = a.getBounds2D();
+			AffineTransform t = new AffineTransform();
+			t.translate(0, (height - rect.getHeight()) / 2);
+			a.transform(t);
+		}
+		return a;
 	}
 	
 	public void finish() {

@@ -28,9 +28,22 @@ public class Message {
 							NO = JOptionPane.NO_OPTION,
 							OK = JOptionPane.OK_OPTION;
 
+	public static String input(String title, String message) {
+		return JOptionPane.showInputDialog(null, message, title, JOptionPane.PLAIN_MESSAGE);
+	}
+	
+	public static String choice(String title, String message, String[] options) {
+//		return JOptionPane.showOptionDialog(null, message, title, -1, JOptionPane.PLAIN_MESSAGE, null, options, 0);
+		return (String)JOptionPane.showInputDialog(null, message, title, JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
+	}
+	
 	public static void error(String title, Exception e) {
-		JOptionPane.showMessageDialog(null, e.getMessage(), title, JOptionPane.ERROR_MESSAGE);
+		error(title, e.getMessage());
 		e.printStackTrace();
+	}
+	
+	public static void error(String title, String message) {
+		JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
 	}
 	
 	public static void ok(String title, String message) {

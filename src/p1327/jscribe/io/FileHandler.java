@@ -26,11 +26,17 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
+import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.FileImageOutputStream;
+import javax.imageio.stream.ImageOutputStream;
 
 import p1327.jscribe.io.data.JSImg;
 import p1327.jscribe.io.data.Text;
@@ -165,9 +171,9 @@ public class FileHandler {
 			BufferedImage out = Renderer.copy(jsa.get(0));
 			Renderer r = new Renderer(out.getGraphics());
 			for(Text t : jsimg.texts)
-				r.write(t);
+				r.write(t, jsa.jsc.getTextStyle(t).compile());
 			r.finish();
-			ImageIO.write(out, ext, img);
+			writeImage(out, ext, img);
 		}catch(Exception e) {
 			Message.error("Import Error", e);
 		}
@@ -193,10 +199,10 @@ public class FileHandler {
 				bi = Renderer.copy(jsa.get(i));
 				Renderer r = new Renderer(bi.getGraphics());
 				for(Text t : jsimg.texts)
-					r.write(t);
+					r.write(t, jsa.jsc.getTextStyle(t).compile());
 				r.finish();
 				
-				ImageIO.write(bi, ext, new File(dir.getAbsolutePath() + "/" + name));
+				writeImage(bi, ext, new File(dir.getAbsolutePath() + "/" + name));
 				
 			}
 		}catch(Exception e) {
@@ -230,5 +236,30 @@ public class FileHandler {
 			Message.error("Failed to Export JSS-File", e);
 		}
 		return false;
+	}
+	
+	public static void writeImage(BufferedImage img, String ext, File f) throws IOException {
+		try(FileImageOutputStream fios = new FileImageOutputStream(f)){
+			writeImage(img, ext, fios);
+		} catch(IOException e){
+			throw e;
+		}
+	}
+	
+	public static void writeImage(BufferedImage img, String ext, OutputStream out) throws IOException {
+			writeImage(img, ext, ImageIO.createImageOutputStream(out));
+	}
+	
+	public static void writeImage(BufferedImage img, String ext, ImageOutputStream out) throws IOException {
+		ImageWriter writer = ImageIO.getImageWritersByFormatName(ext).next();
+		ImageWriteParam writerParam = writer.getDefaultWriteParam();
+		if(!ext.equals("png")) {
+			writerParam.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+			writerParam.setCompressionQuality(1f);
+		}
+		
+		writer.setOutput(out);
+		writer.write(null, new IIOImage(img, null, null), writerParam);
+		writer.dispose();
 	}
 }

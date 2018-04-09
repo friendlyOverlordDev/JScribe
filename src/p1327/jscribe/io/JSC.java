@@ -28,6 +28,8 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 
 import p1327.jscribe.io.data.JSImg;
+import p1327.jscribe.io.data.Text;
+import p1327.jscribe.io.data.TextStyle;
 import p1327.jscribe.util.JSON;
 import p1327.jscribe.util.JSONable;
 import p1327.jscribe.util.data.Property;
@@ -66,5 +68,9 @@ public class JSC implements JSONable{
 		json.put(IMGS, JSON.packJSONableVector(imgs));
 		json.put(STYLES, jss.get().toJSON());
 		return json;
+	}
+	
+	public TextStyle getTextStyle(Text t) {
+		return new TextStyle(jss.get(), t.tags);
 	}
 }

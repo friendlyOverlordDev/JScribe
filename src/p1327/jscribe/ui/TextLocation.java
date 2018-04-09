@@ -264,7 +264,7 @@ public class TextLocation extends JComponent implements Unserialzable {
 		}
 		// write the text last, since it enables a few features for better drawing which would interfere with the commands above
 		Renderer tr = new Renderer(g);
-		tr.writeLocal(text, border, getWidth() - border2, getHeight() - border2);
+		tr.writeLocal(text, border, getWidth() - border2, getHeight() - border2, Editor.$.getJSA().jsc.getTextStyle(text).compile());
 	}
 	
 	enum Direction{

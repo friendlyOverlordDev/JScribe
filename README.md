@@ -20,6 +20,9 @@ Since those files link to one or more specific graphics, those graphics shouldn'
 * __JScribe-Archive__ (jsa)
 Zip-Archive containing a jsc file as well as all files linked by the jsc file.
 Especially useful if JScribe is used by teams, since it allows an easy transmission of all files.
+* __JScribe-Style-Files__ (jss)
+Formated text-files containing styling information for texts.
+Allows import and export of styling information from and to multiple projects.
 
 
 ### License

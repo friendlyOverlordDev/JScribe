@@ -93,7 +93,7 @@ public class JSArchive {
 			if(pos < 1)
 				throw new RuntimeException("Found image without file-format " + name);
 			ext = name.substring(pos);
-			ImageIO.write(imgs.get(i), ext, zos);
+			FileHandler.writeImage(imgs.get(i), ext, zos);
 		}
 	}
 	

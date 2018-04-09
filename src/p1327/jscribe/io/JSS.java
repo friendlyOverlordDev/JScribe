@@ -21,7 +21,9 @@ package p1327.jscribe.io;
  */
 
 import java.io.InputStream;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Vector;
 
 import org.json.JSONObject;
 import org.json.JSONTokener;
@@ -36,7 +38,8 @@ public class JSS implements JSONable {
 								TAGS = "tags";
 	
 	public final Style main;
-	public final HashMap<String, Style> tags;
+	private final HashMap<String, Style> tags;
+	private String[] tagNames = null;
 	
 	public JSS() {
 		main = new Style();
@@ -58,5 +61,30 @@ public class JSS implements JSONable {
 		json.put(MAIN, main.toJSON());
 		json.put(TAGS, JSON.packJSONableMap(tags));
 		return json;
+	}
+	
+	public Style getStyle(String tag) {
+		Style s = tags.get(tag);
+		if(s == null)
+			return createStyle(tag);
+		return s;
+	}
+	
+	public Style createStyle(String tag) {
+		Style s = new Style();
+		tags.put(tag, s);
+		tagNames = null;
+		return s;
+	}
+	
+	public String[] getStyleList() {
+		if(tagNames == null) {
+			Vector<String> v = new Vector<>(tags.keySet());
+			Collections.sort(v);
+			v.add(0, "<add new...>");
+			tagNames = v.toArray(new String[v.size()]);
+		}
+		
+		return tagNames;
 	}
 }

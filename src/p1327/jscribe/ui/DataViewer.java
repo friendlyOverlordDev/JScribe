@@ -47,6 +47,7 @@ import p1327.jscribe.io.data.JSImg;
 import p1327.jscribe.io.data.Note;
 import p1327.jscribe.io.data.Text;
 import p1327.jscribe.ui.window.Editor;
+import p1327.jscribe.ui.window.StyleEditor;
 import p1327.jscribe.util.Message;
 import p1327.jscribe.util.UIText;
 import p1327.jscribe.util.Unserialzable;
@@ -75,6 +76,8 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 		textsTitle = addComplexTab("Text", sp);
 
 		setPreferredSize(new Dimension(maxWidth, 0));
+		
+		setSelectedIndex(1);
 	}
 	
 	private JLabel addComplexTab(String name, JComponent c) {
@@ -188,22 +191,28 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 			
 			addMouseListener(new MouseListener() {
 				
-				private boolean isOver = false;
+				private boolean isOver = false,
+								down = false;
 				
 				@Override
 				public void mouseReleased(MouseEvent e) {
+					if(down)
+						setActive();
+					down = false;
 					if(isOver)
 						setBackground(lightenBackground);
 				}
 				
 				@Override
 				public void mousePressed(MouseEvent e) {
+					down = true;
 					if(isOver)
 						setBackground(darkenBackground);
 				}
 				
 				@Override
 				public void mouseExited(MouseEvent e) {
+					down = false;
 					isOver = false;
 					setBackground(normalBackground);
 				}
@@ -215,9 +224,7 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 				}
 				
 				@Override
-				public void mouseClicked(MouseEvent e) {
-					setActive();
-				}
+				public void mouseClicked(MouseEvent e) {}
 			});
 		}
 		
@@ -413,6 +420,18 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 
 			add(new JScrollPane(text)).setPreferredSize(textDimension);
 			
+			JButton changeStyle = new JButton("change Style");
+			changeStyle.addActionListener(e -> {
+				StyleEditor se = new StyleEditor(Editor.$.getJSA().jsc.getTextStyle(t));
+				se.setVisible(true);
+				Editor.$.viewer.repaint();
+			});
+			
+			JPanel buttonList = new JPanel();
+			buttonList.setLayout(new GridLayout(1, 0));
+			buttonList.add(changeStyle);
+			add(buttonList);
+			
 			JLabel pos = new JLabel();
 			pos.setText(createPositionText());
 			pos.setBorder(textBorder);
@@ -427,14 +446,13 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 			t.w.add(e -> size.setText(createSizeText()));
 			t.h.add(e -> size.setText(createSizeText()));
 			
-			JButton delete = new JButton();
+			JButton delete = new JButton("Delete");
 			delete.addActionListener(e -> {
 				if(Message.yesno("Delete Text?", "Delete the Text?\n" + t.text.get()))
 					t.delete();
 			});
-			delete.setText("Delete");
 			
-			JPanel buttonList = new JPanel();
+			buttonList = new JPanel();
 			buttonList.setLayout(new GridLayout(1, 0));
 			buttonList.add(delete);
 			add(buttonList);

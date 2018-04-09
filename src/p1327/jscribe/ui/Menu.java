@@ -23,18 +23,18 @@ package p1327.jscribe.ui;
 import java.awt.Event;
 import java.awt.Toolkit;
 import java.awt.event.ActionListener;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.KeyStroke;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 
+import p1327.jscribe.ui.listener.SimpleMouseClickListener;
 import p1327.jscribe.util.UIText;
 import p1327.jscribe.util.Unserialzable;
 
@@ -48,30 +48,23 @@ public class Menu extends JMenuBar implements Unserialzable{
 			add(sm).setBorder(border);
 	}
 	
+	public static JPopupMenu newContextMenu(JMenuItem...items) {
+		JPopupMenu menu = new JPopupMenu();
+		for(JMenuItem i : items)
+			if(i != null)
+				menu.add(i);
+			else
+				menu.addSeparator();
+		return menu;
+	}
+	
 	public static class SubMenu extends JMenu implements Unserialzable{
 		
 		
-		public SubMenu(String name, ActionListener listener) {
+		public SubMenu(String name, SimpleMouseClickListener l) {
 			this(name);
-			addMouseListener(new MouseListener() {
-				
-				@Override
-				public void mouseReleased(MouseEvent e) {}
-				
-				@Override
-				public void mousePressed(MouseEvent e) {}
-				
-				@Override
-				public void mouseExited(MouseEvent e) {}
-				
-				@Override
-				public void mouseEntered(MouseEvent e) {}
-				
-				@Override
-				public void mouseClicked(MouseEvent e) {
-					listener.actionPerformed(null);
-				}
-			});
+			// click doesn't work optimally
+			addMouseListener(l);
 		}
 		
 		public SubMenu(String name, JMenuItem...items) {

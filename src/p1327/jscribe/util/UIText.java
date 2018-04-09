@@ -21,6 +21,7 @@ package p1327.jscribe.util;
  */
 
 import java.awt.Font;
+import java.time.LocalTime;
 
 public class UIText {
 	
@@ -52,5 +53,9 @@ public class UIText {
 	
 	public static Font alter(Font f, int flags) {
 		return new Font(f.getFontName(), flags, f.getSize());
+	}
+	
+	public static String getTime() {
+		return LocalTime.now().toString();
 	}
 }
