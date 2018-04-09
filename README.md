@@ -1,6 +1,8 @@
 # JScribe
 ... is a simple tool to add texts to graphics.
 
+Get the latest version here: [Releases](releases)
+
 Developed in Java to allow usage on many different platforms.
 
 Since pictures are usually better than a long text here a few pictures of the program:
