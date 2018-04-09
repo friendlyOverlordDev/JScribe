@@ -355,8 +355,6 @@ public class Editor extends JFrame implements Unserialzable, Window {
 			public void windowActivated(WindowEvent e) {}
 		});
 		
-		updateJSA(FileHandler.openJSA(new File("./test/doge.jsa")));
-		
 		setVisible(true);
 	}
 	
