@@ -21,11 +21,20 @@ package p1327.jscribe.ui.window;
  */
 
 import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Container;
 import java.awt.Desktop;
+import java.awt.KeyboardFocusManager;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseWheelListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.Locale;
 import java.util.Vector;
 
 import javax.swing.ButtonGroup;
@@ -33,8 +42,11 @@ import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.filechooser.FileNameExtensionFilter;
+
+import com.inet.jortho.SpellChecker;
 
 import p1327.jscribe.io.FileHandler;
 import p1327.jscribe.io.JSArchive;
@@ -60,6 +72,9 @@ public class Editor extends JFrame implements Unserialzable, Window {
 	
 	private static final String[] saveAsOptions = {"JSC", "Archive"};
 	
+	private static final String dictDirectory = "./dict/";
+	private static final String enDict = dictDirectory + "dictionary_en.ortho";
+	
 	public static Editor $;
 	
 	private final JFileChooser openJSC,
@@ -73,13 +88,18 @@ public class Editor extends JFrame implements Unserialzable, Window {
 							   importJSS,
 							   exportJSS;
 	
+	public final boolean hasSpellCheck;
+	
 	public final ImageViewer viewer;
 	private final Pagination pages;
 	public final DataViewer data;
 	
-	private final Item save, saveAs, saveArchive, export, iJSS, eJSS;
+	private final SubMenu zoom;
+	private final Item save, saveAs, saveArchive, export, iJSS, eJSS, zoomIn, zoomOut;
 	private final RadioItem placeNote, placeText;
+	private final CheckItem spellChecking;
 	private final StatusBar status;
+	private final JScrollPane content;
 	
 	private JSArchive jsa = null;
 	private boolean unsaved = false;
@@ -91,8 +111,27 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
 		center(1200, 900);
 		
+		boolean sc = false;
+		try {
+			File dictDir = new File(dictDirectory);
+			if(!dictDir.isDirectory())
+				throw new IOException("Can't find dictionary directory " + dictDir.getAbsolutePath());
+			if(!new File(enDict).isFile())
+				throw new IOException("Can't find dictionary at " + dictDir.getAbsolutePath());
+			Locale.setDefault(Locale.forLanguageTag("en"));
+			SpellChecker.registerDictionaries(new File("./dict/").toURI().toURL(), "en", "en");
+			sc = true;
+		}catch(Exception e) {
+			Message.error("Failed to register Dictionary", e);
+		}
+		hasSpellCheck = sc;
+
+		
 		viewer = new ImageViewer();
-		add(new JScrollPane(viewer));
+		content = new JScrollPane(viewer);
+		content.getVerticalScrollBar().setUnitIncrement(16);
+		content.getHorizontalScrollBar().setUnitIncrement(16);
+		add(content);
 		
 		JPanel wrapper = new JPanel(new BorderLayout());
 		pages = new Pagination();
@@ -254,6 +293,17 @@ public class Editor extends JFrame implements Unserialzable, Window {
 						})
 				),
 				new SubMenu("Edit",
+						placeNote = new RadioItem("Place Notes", 'n', "Clicking on the image creates notes", e -> {
+							viewer.setMode(PlacementMode.NOTE);
+						}),
+						placeText = new RadioItem("Place Text", 't', "Clicking and dragging on the image creates text", e -> {
+							viewer.setMode(PlacementMode.TEXT);
+						}),
+						null,
+						spellChecking = new CheckItem("Use Spell-Checking", "Enable or disable Spell-Checking (in english)", e -> {
+							data.setSpellChecking(useSpellChecking());
+						}).setSelected(),
+						null,
 						iJSS = new Item("Import JSS", "Import and override currently used style definitions", e -> {
 							if(jsa == null)
 								return;
@@ -276,15 +326,20 @@ public class Editor extends JFrame implements Unserialzable, Window {
 							exportJSS.setCurrentDirectory(last);
 							if(exportJSS.showSaveDialog(Editor.this) == JFileChooser.APPROVE_OPTION)
 								FileHandler.exportJSS(jsa.jsc.jss.get(), last = exportJSS.getSelectedFile());
-						}),
-						null,
-						placeNote = new RadioItem("Place Notes", 'n', "Clicking on the image creates notes", e -> {
-							viewer.setMode(PlacementMode.NOTE);
-						}),
-						placeText = new RadioItem("Place Text", 't', "Clicking and dragging on the image creates text", e -> {
-							viewer.setMode(PlacementMode.TEXT);
 						})
 						// add another image
+				),
+				zoom = new SubMenu("Zoom",
+						zoomIn = new Item("Zoom in", (char)KeyEvent.VK_PLUS, "Increases the visual size of the image and text (doesn't apply to the export)",  e -> {
+							updateZoom(1);
+						}),
+						zoomOut = new Item("Zoom out", '-', "Decreases the visual size of the image and text (doesn't apply to the export)", e -> {
+							updateZoom(-1);
+						}),
+						null,
+						new Item("Reset", '0', "Resets the zoom to the default", e -> {
+							updateZoom(0);
+						}) 
 				),
 				new SubMenu("Window",
 						new CheckItem("show Non-Text-Elements", 'h', "If disabled, hides notes and the border around text-elements", e -> {
@@ -312,6 +367,53 @@ public class Editor extends JFrame implements Unserialzable, Window {
 						})
 				)
 		));
+		
+		KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(e -> {
+			int k = e.getKeyCode();
+			int t = e.getID();
+			
+			if(t == KeyEvent.KEY_PRESSED && (k == KeyEvent.VK_F5 || k == KeyEvent.VK_F1)) {
+				LinkedList<Component> comps = new LinkedList<>();
+				comps.push(Editor.this);
+				Component c;
+				while(!comps.isEmpty()) {
+					c = comps.pop();
+					c.validate();
+					c.revalidate();
+					if(c instanceof Container)
+						comps.addAll(Arrays.asList(((Container) c).getComponents()));
+				}
+				repaint();
+			}
+			return false; // true consumes the event 
+		});
+		
+		MouseWheelListener mwl = e -> {
+			if(e.isControlDown()) {
+				updateZoom(e.getWheelRotation());
+				e.consume();
+			}
+		};
+		
+		addMouseWheelListener(mwl);
+		content.addMouseWheelListener(mwl);
+		viewer.addMouseWheelListener(mwl);
+		viewer.addMouseWheelListener(e -> {
+			if(e.isControlDown())
+				return;
+			JScrollBar v = content.getVerticalScrollBar();
+			if(v.isVisible()) {
+				v.setValue(v.getValue() + v.getUnitIncrement() * e.getWheelRotation() * 3);
+				e.consume();
+				return;
+			}
+			JScrollBar h = content.getHorizontalScrollBar();
+			if(h.isVisible()) {
+				h.setValue(h.getValue() + h.getUnitIncrement() * e.getWheelRotation() * 3);
+			}
+			e.consume();
+		});
+		content.setWheelScrollingEnabled(true);
 		
 		save.setEnabled(false);
 		saveAs.setEnabled(false);
@@ -412,11 +514,57 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		JSImg img = jsa.jsc.imgs.get(index);
 		viewer.setImage(jsa.get(index), img);
 		data.setImage(img);
+		content.getVerticalScrollBar().setValue(0);
+		content.getHorizontalScrollBar().setValue(0);
+		content.revalidate();
 		setTitle("JScribe - " + img.img);
 	}
 	
 	public void showMessage(String msg) {
 		status.setText(msg);
+	}
+	
+	
+	private int zoomLevel = 0;
+	/**
+	 * updates the zoom;<br>
+	 * zoomlevels are: <br>
+	 * -  12.5%
+	 * -  25%
+	 * -  50%
+	 * - 100%
+	 * - 200%
+	 * - 400%
+	 * - 800%
+	 * @param step 1 = zoom in, -1 = zoom out, 0 = reset zoom
+	 */
+	private void updateZoom(int step) {
+		if(step == 0)
+			zoomLevel = 0;
+		else
+			zoomLevel += step;
+		if(zoomLevel <= Static.minZoom) {
+			zoomLevel = Static.minZoom;
+			zoomOut.setEnabled(false);
+		}else
+			zoomOut.setEnabled(true);
+		if(zoomLevel >= Static.maxZoom) {
+			zoomLevel = Static.maxZoom;
+			zoomIn.setEnabled(false);
+		}else
+			zoomIn.setEnabled(true);
+		
+		if(zoomLevel == 0)
+			zoom.setText("Zoom");
+		else
+			zoom.setText("Zoom (" + UIText.getPercentage(Math.pow(2, zoomLevel), 1) + ")");
+		
+		viewer.setZoom(zoomLevel);
+		content.revalidate();
+	}
+	
+	public boolean useSpellChecking() {
+		return spellChecking.isSelected();
 	}
 	
 	void saveAs() {

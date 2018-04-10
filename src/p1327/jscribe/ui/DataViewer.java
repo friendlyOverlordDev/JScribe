@@ -43,6 +43,8 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
+import com.inet.jortho.SpellChecker;
+
 import p1327.jscribe.io.data.JSImg;
 import p1327.jscribe.io.data.Note;
 import p1327.jscribe.io.data.Text;
@@ -60,6 +62,8 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 	private final JLabel notesTitle, textsTitle;
 	
 	SwitchViewer active = null;
+	
+	private JSImg img = null;
 	
 	public DataViewer() {
 		
@@ -90,6 +94,7 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 	}
 	
 	public void setImage(JSImg img) {
+		this.img = img;
 		notes.removeAll();
 		texts.removeAll();
 		for(Note n : img.notes)
@@ -151,6 +156,20 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 				}
 			}
 		}
+	}
+	
+	public void setSpellChecking(@SuppressWarnings("unused") boolean enable) {
+		// should work, but register and unregister doesn't seem to work correctly when the component was once shown...
+//		Component[] cs = notes.getComponents();
+//		for(Component c : cs) {
+//			if(c instanceof NoteViewer)
+//				((NoteViewer)c).setSpellChecking(enable);
+//			else if(c instanceof TextViewer)
+//				((TextViewer)c).setSpellChecking(enable);
+//		}
+		
+		// workaround: just update all nodes:
+		setImage(img);
 	}
 	
 	
@@ -275,6 +294,8 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 		
 		final JTextArea info;
 		
+//		private boolean checkSpelling = true;
+		
 		public NoteViewer(DataViewer parent, Note n) {
 			super(parent);
 			this.n = n;
@@ -291,6 +312,12 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 			n.checked.add(e -> l.setForeground(e.newVal ? checkedColor : uncheckedColor));
 			
 			info = new JTextArea();
+			Editor $ = Editor.$;
+			if($.hasSpellCheck && $.useSpellChecking())
+				SpellChecker.register(info);
+//			else
+//				checkSpelling = false;
+			
 			info.setText(s);
 			info.getDocument().addDocumentListener(new DocumentListener() {
 				
@@ -354,6 +381,18 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 		String createPositionText() {
 			return "Location: (" + n.x.get() + "|" + n.y.get() + ")";
 		}
+		
+//		public void setSpellChecking(boolean enable) {
+//			if(Editor.$.hasSpellCheck && (enable != checkSpelling)) {
+//				if(enable) {
+//					SpellChecker.register(info);
+//				} else {
+//					SpellChecker.unregister(info);
+//				}
+//			}
+//			
+//			checkSpelling = enable;
+//		}
 	}
 	
 	
@@ -369,6 +408,8 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 		
 		final JTextArea text;
 		
+//		private boolean checkSpelling = true;
+		
 		public TextViewer(DataViewer parent, Text t) {
 			super(parent);
 			this.t = t;
@@ -383,6 +424,11 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 			l.setText(UIText.displayableSingleLine(s));
 			
 			text = new JTextArea();
+			Editor $ = Editor.$;
+			if($.hasSpellCheck && $.useSpellChecking())
+				SpellChecker.register(text);
+//			else
+//				checkSpelling = false;
 			text.setText(s);
 			text.getDocument().addDocumentListener(new DocumentListener() {
 				
@@ -465,5 +511,17 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 		String createSizeText() {
 			return "Size: " + t.w.get() + "x" + t.h.get() + "";
 		}
+		
+//		public void setSpellChecking(boolean enable) {
+//			if(Editor.$.hasSpellCheck && (enable != checkSpelling)) {
+//				if(enable) {
+//					SpellChecker.register(text);
+//				} else {
+//					SpellChecker.unregister(text);
+//				}
+//			}
+//			
+//			checkSpelling = enable;
+//		}
 	}
 }

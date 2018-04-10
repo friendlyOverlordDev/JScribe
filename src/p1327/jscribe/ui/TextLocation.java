@@ -28,12 +28,15 @@ import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.awt.geom.AffineTransform;
 
 import javax.swing.JComponent;
 
 import p1327.jscribe.io.data.Text;
 import p1327.jscribe.ui.window.Editor;
+import p1327.jscribe.ui.window.StyleEditor;
 import p1327.jscribe.util.Renderer;
+import p1327.jscribe.util.Static;
 import p1327.jscribe.util.Unserialzable;
 
 public class TextLocation extends JComponent implements Unserialzable {
@@ -46,6 +49,7 @@ public class TextLocation extends JComponent implements Unserialzable {
 	
 	final Text text;
 	
+	
 	Direction dir = Direction.NONE;
 	EditMode mode = EditMode.NONE;
 	int startX, startY, // position on view
@@ -55,7 +59,7 @@ public class TextLocation extends JComponent implements Unserialzable {
 	
 	// todo: limit locatio to window
 	// todo: add mouse icons depending on location of mouse to field
-	
+
 	public TextLocation(Text _text) {
 		setSize(0, 0);
 		setForeground(Color.white);
@@ -65,22 +69,33 @@ public class TextLocation extends JComponent implements Unserialzable {
 			
 			@Override
 			public void mouseReleased(MouseEvent e) {
-				if(mode == EditMode.OPEN)
+				if(mode == EditMode.OPEN) {
 					Editor.$.data.setActive(text);
+					if(e.getClickCount() == 2) {
+						StyleEditor se = new StyleEditor(Editor.$.getJSA().jsc.getTextStyle(_text));
+						se.setVisible(true);
+						Editor.$.viewer.repaint();
+					}
+				}
 				mode = EditMode.NONE;
 			}
 			
 			@Override
 			public void mousePressed(MouseEvent e) {
 				mode = EditMode.OPEN;
-				startX = getX() + border;
-				startY = getY() + border;
+				startX = _text.x.get();
+				startY = _text.y.get();
 				startSX = e.getXOnScreen();
 				startSY = e.getYOnScreen();
-				startLX = e.getX();
-				startLY = e.getY();
+				if(zoomLevel == 0) {
+					startLX = e.getX();
+					startLY = e.getY();
+				}else {
+					startLX = (int) (e.getX() / zoomMultiplyer);
+					startLY = (int) (e.getY() / zoomMultiplyer);
+				}
+				posSize = new Point(startX + _text.w.get(), startY + _text.h.get());
 				pos = new Point(startX, startY);
-				posSize = new Point(startX + getWidth() - border2, startY + getHeight() - border2);
 			}
 			
 			@Override
@@ -99,6 +114,7 @@ public class TextLocation extends JComponent implements Unserialzable {
 			public void mouseMoved(MouseEvent e) {
 				Direction d = Direction.NONE;
 				int x = e.getX(), y = e.getY(), w = getWidth() - resizearea, h = getHeight() - resizearea;
+				// the resizearea is independent of the zoom
 				if(x < resizearea)
 					d = Direction.LEFT;
 				else if(x >= w)
@@ -161,8 +177,8 @@ public class TextLocation extends JComponent implements Unserialzable {
 			}
 			
 			private Point getResizePointWithSize(MouseEvent e) {
-				int x = startX + e.getXOnScreen() - startSX + startLX,
-					y = startY + e.getYOnScreen() - startSY + startLY,
+				int x = startX + (int)((e.getXOnScreen() - startSX) / zoomMultiplyer) + startLX,
+					y = startY + (int)((e.getYOnScreen() - startSY) / zoomMultiplyer) + startLY,
 					w = Editor.$.viewer.getImgWidth(),
 					h = Editor.$.viewer.getImgHeight();
 				if(x < 0)
@@ -177,8 +193,8 @@ public class TextLocation extends JComponent implements Unserialzable {
 			}
 			
 			private Point getResizePoint(MouseEvent e, boolean includeSize) {
-				int x = startX + e.getXOnScreen() - startSX,
-					y = startY + e.getYOnScreen() - startSY,
+				int x = startX + (int)((e.getXOnScreen() - startSX) / zoomMultiplyer),
+					y = startY + (int)((e.getYOnScreen() - startSY) / zoomMultiplyer),
 					w = Editor.$.viewer.getImgWidth(),
 					h = Editor.$.viewer.getImgHeight();
 				if(includeSize) {
@@ -200,10 +216,10 @@ public class TextLocation extends JComponent implements Unserialzable {
 		setLocation(_text.x.get(), _text.y.get());
 		setSize(_text.w.get(), _text.h.get());
 		this.text = _text;
-		_text.x.add(e -> setLocation(e.newVal, getY() + border));
-		_text.y.add(e -> setLocation(getX() + border, e.newVal));
-		_text.w.add(e -> setSize(e.newVal, getHeight() - border2));
-		_text.h.add(e -> setSize(getWidth() - border2, e.newVal));
+		_text.x.add(e -> setLocation(e.newVal, _text.y.get()));
+		_text.y.add(e -> setLocation(_text.x.get(), e.newVal));
+		_text.w.add(e -> setSize(e.newVal, _text.h.get()));
+		_text.h.add(e -> setSize(_text.w.get(), e.newVal));
 		_text.text.add(e -> repaint());
 		
 		_text.addDeleteListener(n -> {
@@ -219,12 +235,12 @@ public class TextLocation extends JComponent implements Unserialzable {
 	
 	@Override
 	public void setLocation(int x, int y) {
-		super.setLocation(x - border, y - border);
+		super.setLocation((int)(x * zoomMultiplyer) - border, (int)(y * zoomMultiplyer) - border);
 	}
 	
 	@Override
 	public void setSize(int width, int height) {
-		super.setSize(width + border2, height + border2);
+		super.setSize((int)(width * zoomMultiplyer) + border2, (int)(height * zoomMultiplyer) + border2);
 	}
 	
 	public void calcSize(Point p1, Point p2) {
@@ -262,12 +278,35 @@ public class TextLocation extends JComponent implements Unserialzable {
 			g.setColor(getForeground());
 			g.drawRect(1, 1, w - 3, h - 3);
 		}
+		/*
+		if(zoomLevel != 0) {
+			Graphics2D g2d = (Graphics2D) g;
+			AffineTransform transform = g2d.getTransform();
+			transform.concatenate(zoomTransform);
+			g2d.setTransform(zoomTransform);
+		}*/
+		
 		// write the text last, since it enables a few features for better drawing which would interfere with the commands above
 		Renderer tr = new Renderer(g);
+		tr.setZoom(zoomTransform, zoomMultiplyer);
 		tr.writeLocal(text, border, getWidth() - border2, getHeight() - border2, Editor.$.getJSA().jsc.getTextStyle(text).compile());
 	}
 	
-	enum Direction{
+	int zoomLevel = 0;
+	double zoomMultiplyer = 1;
+	private AffineTransform zoomTransform = new AffineTransform();
+	
+	public void setZoom(int zoomLevel) {
+		this.zoomLevel = zoomLevel;
+		zoomMultiplyer = Static.getZoomMultiplyer(zoomLevel);
+		zoomTransform = new AffineTransform();
+		zoomTransform.scale(zoomMultiplyer, zoomMultiplyer);
+		setSize(text.w.get(), text.h.get());
+		setLocation(text.x.get(), text.y.get());
+		repaint();
+	}
+	
+	static enum Direction{
 		NONE, UP, DOWN, LEFT, RIGHT
 	}
 }

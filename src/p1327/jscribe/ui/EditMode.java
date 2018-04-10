@@ -24,6 +24,7 @@ public enum EditMode {
 	
 	NONE, // not in edit
 	OPEN, // open in note-viewer
+	EDIT, // open in style-editor 
 	MOVE, // move on img-viewer
 	RESIZE, // resize (only for textLocation)
 	NEW; // newly created

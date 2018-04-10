@@ -99,6 +99,7 @@ public class StyleElement extends JPanel implements Unserialzable{
 		createDropDownMenu("Font:", s.font, s.useFont, Static.fonts);
 		createNumberField("Size:", s.size, s.useSize, minSize, maxSize);
 		createFontStyle("Style:", s.style, s.useStyle);
+		createBoolOpt("To upper Case:", s.caps, s.useCaps, "UPPER CASE");
 		createColor("Color:", s.color, s.useColor);
 		createSeparator();
 		createColor("Outline:", s.outline, s.useOutline);
@@ -157,6 +158,19 @@ public class StyleElement extends JPanel implements Unserialzable{
 		moveRight.setEnabled(v);
 		
 		return this;
+	}
+	
+	private void createBoolOpt(String name, BoolProperty value, BoolProperty inUse, String label) {
+		final JPanel wrapper = new JPanel(new BorderLayout());
+		
+		final JToggleButton opt = new JToggleButton(label);
+		opt.setSelected(value.get());
+		opt.addActionListener(e -> {
+			value.set(opt.isSelected());
+		});
+		wrapper.add(opt);
+		
+		makeCheckable(name, wrapper, inUse);
 	}
 	
 	private void createFontStyle(String name, IntProperty value, BoolProperty inUse) {

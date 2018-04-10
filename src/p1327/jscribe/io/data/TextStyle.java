@@ -93,7 +93,8 @@ public class TextStyle implements Iterable<TaggedStyle>{
 				xAlign = true,
 				yAlign = true,
 				line = true,
-				rotation = true;
+				rotation = true,
+				caps = true;
 		
 		for(int i = styles.size() - 1; i > -1; i--) {
 			tmp = styles.get(i).style;
@@ -137,37 +138,44 @@ public class TextStyle implements Iterable<TaggedStyle>{
 				rotation = false;
 				s.rotation.set(tmp.rotation.get());
 			}
+			if(caps && (tmp.useCaps.get())) {
+				caps = false;
+				s.caps.set(tmp.caps.get());
+			}
 		}
 		tmp = jss.main;
-		if(font && (tmp.useFont.get())) {
+		if(font) {
 			s.font.set(tmp.font.get());
 		}
-		if(color && (tmp.useColor.get())) {
+		if(color) {
 			s.color.set(tmp.color.get());
 		}
-		if(size && (tmp.useSize.get())) {
+		if(size) {
 			s.size.set(tmp.size.get());
 		}
-		if(style && (tmp.useStyle.get())) {
+		if(style) {
 			s.style.set(tmp.style.get());
 		}
-		if(outline && (tmp.useOutline.get())) {
+		if(outline) {
 			s.outline.set(tmp.outline.get());
 		}
-		if(olWidth && (tmp.useOutlineWidth.get())) {
+		if(olWidth) {
 			s.outlineWidth.set(tmp.outlineWidth.get());
 		}
-		if(xAlign && (tmp.useXAlign.get())) {
+		if(xAlign) {
 			s.xAlign.set(tmp.xAlign.get());
 		}
-		if(yAlign && (tmp.useYAlign.get())) {
+		if(yAlign) {
 			s.yAlign.set(tmp.yAlign.get());
 		}
-		if(line && (tmp.useLineHeight.get())) {
+		if(line) {
 			s.lineHeight.set(tmp.lineHeight.get());
 		}
-		if(rotation && (tmp.useRotation.get())) {
+		if(rotation) {
 			s.rotation.set(tmp.rotation.get());
+		}
+		if(caps) {
+			s.caps.set(tmp.caps.get());
 		}
 		
 		return s;

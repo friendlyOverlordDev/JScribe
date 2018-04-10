@@ -23,11 +23,13 @@ package p1327.jscribe.ui;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.awt.geom.AffineTransform;
 import java.util.Vector;
 
 import javax.swing.JPanel;
@@ -36,6 +38,7 @@ import p1327.jscribe.io.data.JSImg;
 import p1327.jscribe.io.data.Note;
 import p1327.jscribe.io.data.Text;
 import p1327.jscribe.ui.window.Editor;
+import p1327.jscribe.util.Static;
 import p1327.jscribe.util.Unserialzable;
 
 public class ImageViewer extends JPanel implements Unserialzable{
@@ -73,12 +76,10 @@ public class ImageViewer extends JPanel implements Unserialzable{
 				if(pMode == PlacementMode.NOTE) {
 					if(newPoint == null)
 						return;
-					newPoint.note.setLocation(e.getPoint());
 					Editor.$.data.setActive(newPoint.note);
 				}else if(pMode == PlacementMode.TEXT){
 					if(newText == null)
 						return;
-					newText.calcSize(start, fixPoint(e.getPoint()));
 					Editor.$.data.setActive(newText.text);
 				}
 				newPoint = null;
@@ -93,6 +94,8 @@ public class ImageViewer extends JPanel implements Unserialzable{
 					return;
 				
 				Point m = e.getPoint();
+				m.x /= zoomMultiplyer;
+				m.y /= zoomMultiplyer;
 				int h = getImgHeight() - 1, w = getImgWidth() - 1;
 				if(m.x < 0 || m.y < 0 || m.x > w || m.y > h)
 					return;
@@ -100,6 +103,7 @@ public class ImageViewer extends JPanel implements Unserialzable{
 				if(pMode == PlacementMode.NOTE) {
 					Note n = new Note("", 0, 0);
 					newPoint = new NotePoint(n);
+					newPoint.setZoom(zoomLevel);
 					add(newPoint);
 					points.add(newPoint);
 					jsimg.notes.add(n);
@@ -111,6 +115,7 @@ public class ImageViewer extends JPanel implements Unserialzable{
 				}else if(pMode == PlacementMode.TEXT){
 					Text t = new Text("", 0, 0, 0, 0);
 					newText = new TextLocation(t);
+					newText.setZoom(zoomLevel);
 					add(newText);
 					locations.add(newText);
 					jsimg.texts.add(newText.getText());
@@ -163,16 +168,18 @@ public class ImageViewer extends JPanel implements Unserialzable{
 		NotePoint np;
 		for(Note n : jsimg.notes) {
 			np = new NotePoint(n);
+			np.setZoom(zoomLevel);
 			add(np);
 			points.addElement(np);
 		}
 		TextLocation tl;
 		for(Text t : jsimg.texts) {
 			tl = new TextLocation(t);
+			tl.setZoom(zoomLevel);
 			add(tl);
 			locations.add(tl);
 		}
-		this.setPreferredSize(new Dimension(imgW = img.getWidth(this), imgH = img.getHeight(this)));
+		this.setPreferredSize(new Dimension((int) ((imgW = img.getWidth(this)) * zoomMultiplyer), (int)((imgH = img.getHeight(this)) * zoomMultiplyer)));
 		this.repaint();
 	}
 	
@@ -186,6 +193,8 @@ public class ImageViewer extends JPanel implements Unserialzable{
 	
 	Point fixPoint(Point p) {
 		int h = imgH, w = imgW;
+		p.x /= zoomMultiplyer;
+		p.y /= zoomMultiplyer;
 		if(p.x < 0)
 			p.x = 0;
 		if(p.y < 0)
@@ -200,8 +209,30 @@ public class ImageViewer extends JPanel implements Unserialzable{
 	@Override
 	protected void paintComponent(Graphics g) {
 		super.paintComponent(g);
-		if(img != null)
+		if(img != null) {
+			if(zoomLevel != 0) {
+				Graphics2D g2d = (Graphics2D) g;
+				g2d.drawImage(img, zoomTransform, this);
+			}else
 			g.drawImage(img, 0, 0, this);
+		}
+	}
+	
+	int zoomLevel = 0;
+	double zoomMultiplyer = 1;
+	private AffineTransform zoomTransform = new AffineTransform();
+	
+	public void setZoom(int zoomLevel) {
+		this.zoomLevel = zoomLevel;
+		zoomMultiplyer = Static.getZoomMultiplyer(zoomLevel);
+		zoomTransform = new AffineTransform();
+		zoomTransform.scale(zoomMultiplyer, zoomMultiplyer);
+		setPreferredSize(new Dimension((int) (imgW * zoomMultiplyer), (int)(imgH * zoomMultiplyer)));
+		for(NotePoint np : points)
+			np.setZoom(zoomLevel);
+		for(TextLocation tl : locations)
+			tl.setZoom(zoomLevel);
+		repaint();
 	}
 	
 	public void setMode(PlacementMode m) {

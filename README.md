@@ -16,6 +16,20 @@ Notes can be converted to text and neither notes nor borders around text will be
 With the style editor and a tag-based styling system the style of multiple components can be changed easily.
 
 
+### Changelog
+* [0.7.0](https://github.com/friendlyOverlordDev/JScribe/releases/download/0.7.0/JScribe-0.7.0.zip "Download")
+	* JOrtho was added as a spell checker (currently english only, however it can be expanded if needed)
+	* some simple zooming is now possible
+	* the styles where expanded with an "all caps" option which renders text in uppercase regardless of how they are written
+	* a double click on a text-element will now open the style editor
+	* panic button (F1 & F5) added, which will update the Program and should help to fix graphic based issues, when they appear
+	* scrolling is reset when a new image is loaded
+	* release-jars will be part of the repository
+	(probably not the most elegant way, but now those who accidentally download the repository will also have the files)
+* [0.6.2 public Beta](https://github.com/friendlyOverlordDev/JScribe/releases/download/0.6.2/JScribe.zip "Download")
+	* first release
+
+
 ### Donation
 While JScribe is completly free, if you like it and want to support the developer, you can donate:
 * Bitcoin (BTC): 1PPDyhR5fcybRtBf8fntwAtRWVCGakkjZR

@@ -58,4 +58,14 @@ public class UIText {
 	public static String getTime() {
 		return LocalTime.now().toString();
 	}
+	
+	public static String getPercentage(double p, int precision) {
+		double precPow = Math.pow(10, precision);
+		long val = Math.round(p * precPow * 100);
+		long nonDec = Math.round(Math.floor(val / precPow));
+		long dec = val - Math.round(nonDec * precPow);
+		if(dec == 0)
+			return nonDec + "%";
+		return nonDec + "." + dec + "%";
+	}
 }

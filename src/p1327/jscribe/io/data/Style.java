@@ -56,6 +56,7 @@ public class Style implements JSONable{
 								OL_WIDTH = "olWidth",
 								LINE_HEIGHT = "lineHeight",
 								ROTATION = "rotation",
+								CAPS = "caps",
 								USE_PREFIX = "use__";
 
 	public final Property<String> font;
@@ -68,7 +69,8 @@ public class Style implements JSONable{
 							 xAlign,
 							 yAlign,
 							 lineHeight;
-	public final BoolProperty useFont,
+	public final BoolProperty caps,
+							  useFont,
 							  useRotation,
 							  useOutlineWidth,
 							  useSize,
@@ -77,7 +79,8 @@ public class Style implements JSONable{
 							  useXAlign,
 							  useYAlign,
 							  useOutline,
-							  useLineHeight;
+							  useLineHeight,
+							  useCaps;
 	
 	
 	public Style() {
@@ -91,6 +94,7 @@ public class Style implements JSONable{
 		yAlign = new IntProperty(CENTER);
 		outline = new Property<>(Color.white);
 		lineHeight = new IntProperty(0);
+		caps = new BoolProperty();
 
 		useFont = new BoolProperty();
 		useRotation = new BoolProperty();
@@ -102,6 +106,7 @@ public class Style implements JSONable{
 		useYAlign = new BoolProperty();
 		useOutline = new BoolProperty();
 		useLineHeight = new BoolProperty();
+		useCaps = new BoolProperty();
 	}
 	
 	public Style(JSONObject data) {
@@ -115,6 +120,7 @@ public class Style implements JSONable{
 		xAlign = new IntProperty(data.getInt(X_ALIGN));
 		yAlign = new IntProperty(data.getInt(Y_ALIGN));
 		lineHeight = new IntProperty(data.getInt(LINE_HEIGHT));
+		caps = data.has(CAPS) ? new BoolProperty(data.getBoolean(CAPS)) : new BoolProperty();
 
 		useFont = new BoolProperty(data.getBoolean(USE_PREFIX + FONT));
 		useRotation = new BoolProperty(data.getBoolean(USE_PREFIX + ROTATION));
@@ -126,6 +132,7 @@ public class Style implements JSONable{
 		useYAlign = new BoolProperty(data.getBoolean(USE_PREFIX + Y_ALIGN));
 		useOutline = new BoolProperty(data.getBoolean(USE_PREFIX + OUTLINE));
 		useLineHeight = new BoolProperty(data.getBoolean(USE_PREFIX + LINE_HEIGHT));
+		useCaps = data.has(CAPS) ? new BoolProperty(data.getBoolean(USE_PREFIX + CAPS)) : new BoolProperty();
 	}
 	
 	@Override
@@ -141,6 +148,7 @@ public class Style implements JSONable{
 		json.put(X_ALIGN, xAlign.get());
 		json.put(Y_ALIGN, yAlign.get());
 		json.put(LINE_HEIGHT, lineHeight.get());
+		json.put(CAPS, caps.get());
 		
 		json.put(USE_PREFIX + FONT, useFont.get());
 		json.put(USE_PREFIX + ROTATION, useRotation.get());
@@ -152,6 +160,7 @@ public class Style implements JSONable{
 		json.put(USE_PREFIX + Y_ALIGN, useYAlign.get());
 		json.put(USE_PREFIX + OUTLINE, useOutline.get());
 		json.put(USE_PREFIX + LINE_HEIGHT, useLineHeight.get());
+		json.put(USE_PREFIX + CAPS, useCaps.get());
 		return json;
 	}
 }

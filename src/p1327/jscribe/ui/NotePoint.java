@@ -27,11 +27,13 @@ import java.awt.Graphics;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.awt.geom.AffineTransform;
 
 import javax.swing.JComponent;
 
 import p1327.jscribe.io.data.Note;
 import p1327.jscribe.ui.window.Editor;
+import p1327.jscribe.util.Static;
 import p1327.jscribe.util.UIText;
 import p1327.jscribe.util.Unserialzable;
 
@@ -62,8 +64,8 @@ public class NotePoint extends JComponent implements Unserialzable {
 			@Override
 			public void mousePressed(MouseEvent e) {
 				mode = EditMode.OPEN;
-				startX = getX() + move;
-				startY = getY() + move;
+				startX = _note.x.get();
+				startY = _note.y.get();
 				startSX = e.getXOnScreen();
 				startSY = e.getYOnScreen();
 			}
@@ -87,8 +89,8 @@ public class NotePoint extends JComponent implements Unserialzable {
 				if(mode == EditMode.OPEN)
 					mode = EditMode.MOVE;
 				if(mode == EditMode.MOVE) {
-					int x = startX + e.getXOnScreen() - startSX,
-						y = startY + e.getYOnScreen() - startSY,
+					int x = startX + (int)((e.getXOnScreen() - startSX) / zoomMultiplyer),
+						y = startY + (int)((e.getYOnScreen() - startSY) / zoomMultiplyer),
 						w = Editor.$.viewer.getImgWidth() - 1,
 						h = Editor.$.viewer.getImgHeight() - 1;
 					if(x < 0)
@@ -109,8 +111,8 @@ public class NotePoint extends JComponent implements Unserialzable {
 		setLocation(_note.x.get(), _note.y.get());
 		setToolTipText(UIText.displayable(_note.info.get()));
 		this.note = _note;
-		_note.x.add(e -> setLocation(e.newVal, getY() + move));
-		_note.y.add(e -> setLocation(getX() + move, e.newVal));
+		_note.x.add(e -> setLocation(e.newVal, _note.y.get()));
+		_note.y.add(e -> setLocation(_note.x.get(), e.newVal));
 		_note.info.add(e -> setToolTipText(UIText.displayable(e.newVal)));
 		
 		_note.addDeleteListener(n -> {
@@ -126,7 +128,7 @@ public class NotePoint extends JComponent implements Unserialzable {
 	
 	@Override
 	public void setLocation(int x, int y) {
-		super.setLocation(x - move, y - move);
+		super.setLocation((int)(x * zoomMultiplyer) - move, (int)(y * zoomMultiplyer) - move);
 	}
 	
 	@Override
@@ -144,5 +146,16 @@ public class NotePoint extends JComponent implements Unserialzable {
 		g.setColor(getForeground());
 		g.drawLine(1, 1, size - 2, size - 2);
 		g.drawLine(1, size - 2, size - 2, 1);
+	}
+	
+	double zoomMultiplyer = 1;
+	private AffineTransform zoomTransform = new AffineTransform();
+	
+	public void setZoom(int zoomLevel) {
+		zoomMultiplyer = Static.getZoomMultiplyer(zoomLevel);
+		zoomTransform = new AffineTransform();
+		zoomTransform.scale(zoomMultiplyer, zoomMultiplyer);
+		setLocation(note.x.get(), note.y.get());
+		repaint();
 	}
 }

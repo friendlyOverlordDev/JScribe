@@ -26,7 +26,17 @@ public class Static {
 	
 	private Static() {}
 	
-	public static final String version = "0.6.2";
+	public static final String version = "0.7.0";
+	
+	public static final int zoomSteps = 1;
+	public static final int minZoom = -3;
+	public static final int maxZoom = 3;
+	
+	public static final double getZoomMultiplyer(int zoomLevel) {
+		if(zoomLevel == 0)
+			return 1;
+		return Math.pow(2, zoomLevel * zoomSteps);
+	}
 	
 	public static final String[] supportedTypeList = {"png", "jpg", "jpeg", "gif"};
 	public static final String supportedTypes = String.join(", ", supportedTypeList);

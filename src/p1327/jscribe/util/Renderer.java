@@ -40,6 +40,9 @@ public class Renderer {
 	
 	private final Graphics2D g2d;
 	
+	private AffineTransform zoom = null;
+	private double multiplyer = 1;
+	
 	public Renderer(Graphics g) {
 		this((Graphics2D) g);
 	}
@@ -76,22 +79,26 @@ public class Renderer {
 	 * @return true, if the text fitts into the rect, false if the height of the text is bigger than the given height.
 	 */
 	public boolean write(String text, int x, int y, int w, int h, Style s) {
+		if(s.caps.get())
+			text = text.toUpperCase();
 		Font f = new Font(s.font.get(), s.style.get(), s.size.get());
 		FontMetrics fm = g2d.getFontMetrics(f);
 		FontRenderContext frc = fm.getFontRenderContext();
 		String[] lines = text.split("\n"), words;
 		char[] chars;
-		int height = fm.getHeight() + s.lineHeight.get(), lineCount = 0;
+		int height = (int)((fm.getHeight() + s.lineHeight.get()) * multiplyer),
+			lineCount = 0;
+		double maxTxtW = w / multiplyer;
 		String newLine, oldNewLine;
 		Area a = new Area();
 		for(String line : lines) {
 			int lineLength = fm.stringWidth(line);
-			if(lineLength > w) {
+			if(lineLength > maxTxtW) {
 				words = line.split(" ");
 				line = "";
 				for(int i = 0, l = words.length; i < l; i++) {
 					newLine = line + words[i];
-					while(fm.stringWidth(newLine) > w) {
+					while(fm.stringWidth(newLine) > maxTxtW) {
 						oldNewLine = newLine;
 						if(line.length() > 0) {
 							a.add(xAlign(prepareLine(line, x, y + height * lineCount, f, frc), w, s.xAlign.get()));
@@ -103,7 +110,7 @@ public class Renderer {
 //							line = ""; // is always the case here
 							for(int j = 0, cc = chars.length; j < cc; j++) {
 								newLine = line + chars[j] + "-";
-								if(fm.stringWidth(newLine) > w) {
+								if(fm.stringWidth(newLine) > maxTxtW) {
 									if(line.length() > 0) {
 										a.add(xAlign(prepareLine(line + "-", x, y + height * lineCount, f, frc), w, s.xAlign.get()));
 										lineCount++;
@@ -130,20 +137,23 @@ public class Renderer {
 		yAlign(a, h, s.yAlign.get());
 		rotate(a, s.rotation.get());
 		
-//		g2d.setStroke(new BasicStroke((float) s.outlineWidth.get(), BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER)); // is the default, but generates weird spikes on "W"
-		g2d.setStroke(new BasicStroke((float) s.outlineWidth.get(), BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND));
+//		g2d.setStroke(new BasicStroke((float) (s.outlineWidth.get() * multiplyer), BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER)); // is the default, but generates weird spikes on "W"
+		g2d.setStroke(new BasicStroke((float) (s.outlineWidth.get() * multiplyer), BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND));
 		g2d.setColor(s.outline.get());
 		g2d.draw(a);
 		g2d.setColor(s.color.get());
 		g2d.fill(a);
-		return y + f.getSize2D() + height * (lineCount - 1) < h;
+		return (f.getSize2D() + height * (lineCount - 1)) < h;
 	}
 	
 	private Area prepareLine(String text, int x, int y, Font f, FontRenderContext frc) {
 		if(text.length() < 1)
 			text = " ";
 		GlyphVector gv = f.createGlyphVector(frc, text);
-		return new Area(gv.getOutline(x, y + f.getSize2D()));
+		Area a = new Area(gv.getOutline(x, y + f.getSize2D()));
+		if(zoom != null)
+			a.transform(zoom);
+		return a;
 	}
 	
 	private Area xAlign(Area a, int width, int alignment) {
@@ -193,6 +203,11 @@ public class Renderer {
 			a.transform(t);
 		}
 		return a;
+	}
+	
+	public void setZoom(AffineTransform transform, double multiplyer) {
+		zoom = transform;
+		this.multiplyer = multiplyer;
 	}
 	
 	public void finish() {
