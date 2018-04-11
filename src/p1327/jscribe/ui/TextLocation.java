@@ -29,15 +29,19 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.geom.AffineTransform;
+import java.util.function.Consumer;
 
 import javax.swing.JComponent;
 
 import p1327.jscribe.io.data.Text;
+import p1327.jscribe.io.data.prototype.DeletableElement;
 import p1327.jscribe.ui.window.Editor;
 import p1327.jscribe.ui.window.StyleEditor;
 import p1327.jscribe.util.Renderer;
 import p1327.jscribe.util.Static;
 import p1327.jscribe.util.Unserialzable;
+import p1327.jscribe.util.data.event.ChangeListener;
+import p1327.jscribe.util.data.event.IntChangeListener;
 
 public class TextLocation extends JComponent implements Unserialzable {
 	
@@ -49,7 +53,6 @@ public class TextLocation extends JComponent implements Unserialzable {
 	
 	final Text text;
 	
-	
 	Direction dir = Direction.NONE;
 	EditMode mode = EditMode.NONE;
 	int startX, startY, // position on view
@@ -57,8 +60,12 @@ public class TextLocation extends JComponent implements Unserialzable {
 		startLX, startLY; // position on element
 	Point posSize, pos; //position+size
 	
-	// todo: limit locatio to window
-	// todo: add mouse icons depending on location of mouse to field
+	private final Consumer<DeletableElement> deleteL;
+	private final ChangeListener<String> textL;
+	private final IntChangeListener xChangeL,
+									yChangeL,
+									wChangeL,
+									hChangeL;
 
 	public TextLocation(Text _text) {
 		setSize(0, 0);
@@ -216,17 +223,28 @@ public class TextLocation extends JComponent implements Unserialzable {
 		setLocation(_text.x.get(), _text.y.get());
 		setSize(_text.w.get(), _text.h.get());
 		this.text = _text;
-		_text.x.add(e -> setLocation(e.newVal, _text.y.get()));
-		_text.y.add(e -> setLocation(_text.x.get(), e.newVal));
-		_text.w.add(e -> setSize(e.newVal, _text.h.get()));
-		_text.h.add(e -> setSize(_text.w.get(), e.newVal));
-		_text.text.add(e -> repaint());
+		_text.x.add(xChangeL = e -> setLocation(e.newVal, _text.y.get()));
+		_text.y.add(yChangeL = e -> setLocation(_text.x.get(), e.newVal));
+		_text.w.add(wChangeL = e -> setSize(e.newVal, _text.h.get()));
+		_text.h.add(hChangeL = e -> setSize(_text.w.get(), e.newVal));
+		_text.text.add(textL = e -> repaint());
 		
-		_text.addDeleteListener(n -> {
+		_text.addDeleteListener(deleteL = n -> {
 			Container c = getParent();
+			if(c == null)
+				return;
 			c.remove(this);
 			c.repaint();
 		});
+	}
+	
+	public void delete() {
+		text.x.remove(xChangeL);
+		text.y.remove(yChangeL);
+		text.w.remove(wChangeL);
+		text.h.remove(hChangeL);
+		text.text.remove(textL);
+		text.removeDeleteListener(deleteL);
 	}
 	
 	public Text getText() {

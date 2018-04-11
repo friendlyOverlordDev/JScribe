@@ -34,6 +34,7 @@ import javax.imageio.ImageIO;
 import org.json.JSONException;
 
 import p1327.jscribe.io.data.JSImg;
+import p1327.jscribe.util.Renderer;
 
 public class JSArchive {
 	
@@ -43,11 +44,10 @@ public class JSArchive {
 	public File jscName = null;
 	public final JSC jsc;
 	private final Vector<BufferedImage> imgs = new Vector<>();
+	final Vector<File> imgFiles = new Vector<>();
 	
-	final File baseDirectory; // don't save this 
 	
 	JSArchive(File archive, ZipFile zf) throws IOException{
-		this.baseDirectory = archive.getParentFile();
 		this.name = archive;
 		
 		ZipEntry entry = zf.getEntry(data);
@@ -59,23 +59,26 @@ public class JSArchive {
 			if(entry == null)
 				throw new IOException("Invalid jsa; can't find image " + img.img + " in it.");
 			imgs.add(ImageIO.read(zf.getInputStream(entry)));
+			imgFiles.add(null);
 		}
 	}
 	
-	JSArchive(File baseDirecty) {
-		this.baseDirectory = baseDirecty;
+	JSArchive() {
 		jsc = new JSC();
 	}
 	
 	JSArchive(File name, JSC jsc) throws JSONException, IOException {
-		this.baseDirectory = name.getParentFile();
 		this.jscName = name;
 		this.jsc = jsc;
 		String parent = name.getParent();
 		if(parent == null)
 			throw new IOException(".jsc parent directory not found for " + name.getAbsolutePath());
-		for(JSImg img : jsc.imgs)
-			imgs.add(ImageIO.read(new File(parent + "/" + img.img)));
+		File f;
+		for(JSImg img : jsc.imgs) {
+			f = new File(parent + "/" + img.img);
+			imgs.add(ImageIO.read(f));
+			imgFiles.add(f);
+		}
 	}
 	
 	void write(ZipOutputStream zos, Charset charset) throws IOException{
@@ -85,15 +88,17 @@ public class JSArchive {
 		zos.putNextEntry(new ZipEntry(data));
 		zos.write(jsc.toJSON().toString().getBytes(charset));
 		
-		String name, ext;
+		String name;
+//		String ext;
 		int pos;
 		for(int i = 0; i < l; i++) {
 			zos.putNextEntry(new ZipEntry(name = jsc.imgs.get(i).img));
 			pos = name.lastIndexOf('.') + 1;
 			if(pos < 1)
 				throw new RuntimeException("Found image without file-format " + name);
-			ext = name.substring(pos);
-			FileHandler.writeImage(imgs.get(i), ext, zos);
+//			ext = name.substring(pos); // force "png"
+			FileHandler.writeImage(imgs.get(i), "png", zos);
+			imgFiles.set(i, null);
 		}
 	}
 	
@@ -105,8 +110,43 @@ public class JSArchive {
 		return imgs.get(index);
 	}
 	
-	void add(String name, BufferedImage img){
+	public BufferedImage set(int index, BufferedImage img) throws ArrayIndexOutOfBoundsException {
+		return imgs.set(index, img);
+	}
+	
+	public File getFile(int index) throws ArrayIndexOutOfBoundsException {
+		return imgFiles.get(index);
+	}
+	
+	public File setFile(int index, File f) throws ArrayIndexOutOfBoundsException{
+		return imgFiles.set(index, f);
+	}
+	
+	public void add(File f) throws IOException {
+		String name = f.getName();
+		for(JSImg i : jsc.imgs) {
+			if(i.img.equals(name))
+				throw new IOException("An image with the name " + name + " already exists.");
+		}
+		BufferedImage img = ImageIO.read(f);
+		if(img == null)
+			throw new IOException("Failed to open Image...");
 		imgs.add(img);
+		imgFiles.add(jscName == null ? null : f);
 		jsc.imgs.add(new JSImg(name));
+	}
+	
+	public void copy(int index, String newName, File newFile) throws ArrayIndexOutOfBoundsException {
+		imgs.add(Renderer.copy(imgs.get(index)));
+		imgFiles.add(newFile);
+		JSImg nImg = new JSImg(jsc.imgs.get(index).toJSON());
+		nImg.img = newName;
+		jsc.imgs.add(nImg);
+	}
+	
+	public void remove(int index) throws ArrayIndexOutOfBoundsException {
+		jsc.imgs.remove(index);
+		imgs.remove(index);
+		imgFiles.remove(index);
 	}
 }

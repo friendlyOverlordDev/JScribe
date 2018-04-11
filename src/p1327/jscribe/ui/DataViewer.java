@@ -27,6 +27,7 @@ import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.util.function.Consumer;
 
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -48,11 +49,14 @@ import com.inet.jortho.SpellChecker;
 import p1327.jscribe.io.data.JSImg;
 import p1327.jscribe.io.data.Note;
 import p1327.jscribe.io.data.Text;
+import p1327.jscribe.io.data.prototype.DeletableElement;
 import p1327.jscribe.ui.window.Editor;
 import p1327.jscribe.ui.window.StyleEditor;
 import p1327.jscribe.util.Message;
 import p1327.jscribe.util.UIText;
 import p1327.jscribe.util.Unserialzable;
+import p1327.jscribe.util.data.event.BoolChangeListener;
+import p1327.jscribe.util.data.event.IntChangeListener;
 
 public class DataViewer extends JTabbedPane implements Unserialzable {
 	
@@ -62,8 +66,6 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 	private final JLabel notesTitle, textsTitle;
 	
 	SwitchViewer active = null;
-	
-	private JSImg img = null;
 	
 	public DataViewer() {
 		
@@ -94,9 +96,21 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 	}
 	
 	public void setImage(JSImg img) {
-		this.img = img;
+		// prepare ui-elements for removal by removing listeners
+		Component[] cs = notes.getComponents();
+		for(Component c : cs)
+			if(c instanceof NoteViewer)
+				((NoteViewer)c).destroy();
+		cs = texts.getComponents();
+		for(Component c : cs)
+			if(c instanceof TextViewer)
+				((TextViewer)c).destroy();
+		
+		// remove old ui
 		notes.removeAll();
 		texts.removeAll();
+		
+		// add new ui
 		for(Note n : img.notes)
 			notes.add(new NoteViewer(this, n));
 		for(Text t : img.texts)
@@ -158,18 +172,15 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 		}
 	}
 	
-	public void setSpellChecking(@SuppressWarnings("unused") boolean enable) {
-		// should work, but register and unregister doesn't seem to work correctly when the component was once shown...
-//		Component[] cs = notes.getComponents();
-//		for(Component c : cs) {
-//			if(c instanceof NoteViewer)
-//				((NoteViewer)c).setSpellChecking(enable);
-//			else if(c instanceof TextViewer)
-//				((TextViewer)c).setSpellChecking(enable);
-//		}
-		
-		// workaround: just update all nodes:
-		setImage(img);
+	public void setSpellChecking( boolean enable) {
+		Component[] cs = notes.getComponents();
+		for(Component c : cs)
+			if(c instanceof NoteViewer)
+				((NoteViewer)c).setSpellChecking(enable);
+		cs = texts.getComponents();
+		for(Component c : cs)
+			if(c instanceof TextViewer)
+				((TextViewer)c).setSpellChecking(enable);
 	}
 	
 	
@@ -294,12 +305,17 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 		
 		final JTextArea info;
 		
-//		private boolean checkSpelling = true;
+		private boolean checkSpelling = true;
+		
+		private final Consumer<DeletableElement> deleteL;
+		private final BoolChangeListener checkedL;
+		private final IntChangeListener posL;
 		
 		public NoteViewer(DataViewer parent, Note n) {
 			super(parent);
 			this.n = n;
-			n.addDeleteListener(e -> {
+			n.addDeleteListener(deleteL = e -> {
+				destroy();
 				Container c = getParent(); // don't confuse this with parent, which would be the DataViewer and not the containing container
 				c.remove(this);
 				c.repaint();
@@ -309,14 +325,14 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 			String s = n.info.get();
 			l.setText(UIText.displayableSingleLine(s));
 			l.setForeground(n.checked.get() ? checkedColor : uncheckedColor);
-			n.checked.add(e -> l.setForeground(e.newVal ? checkedColor : uncheckedColor));
+			n.checked.add(checkedL = e -> l.setForeground(e.newVal ? checkedColor : uncheckedColor));
 			
 			info = new JTextArea();
 			Editor $ = Editor.$;
 			if($.hasSpellCheck && $.useSpellChecking())
 				SpellChecker.register(info);
-//			else
-//				checkSpelling = false;
+			else
+				checkSpelling = false;
 			
 			info.setText(s);
 			info.getDocument().addDocumentListener(new DocumentListener() {
@@ -349,8 +365,9 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 			pos.setText(createPositionText());
 			pos.setBorder(textBorder);
 			add(pos);
-			n.x.add(e -> pos.setText(createPositionText()));
-			n.y.add(e -> pos.setText(createPositionText()));
+			posL = e -> pos.setText(createPositionText());
+			n.x.add(posL);
+			n.y.add(posL);
 
 			JCheckBox checked = new JCheckBox("Checked?");
 			checked.setBorder(textBorder);
@@ -382,17 +399,24 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 			return "Location: (" + n.x.get() + "|" + n.y.get() + ")";
 		}
 		
-//		public void setSpellChecking(boolean enable) {
-//			if(Editor.$.hasSpellCheck && (enable != checkSpelling)) {
-//				if(enable) {
-//					SpellChecker.register(info);
-//				} else {
-//					SpellChecker.unregister(info);
-//				}
-//			}
-//			
-//			checkSpelling = enable;
-//		}
+		public void destroy() {
+			n.x.remove(posL);
+			n.y.remove(posL);
+			n.checked.remove(checkedL);
+			n.removeDeleteListener(deleteL);
+		}
+		
+		public void setSpellChecking(boolean enable) {
+			if(Editor.$.hasSpellCheck && (enable != checkSpelling)) {
+				if(enable) {
+					SpellChecker.register(info);
+				} else {
+					SpellChecker.unregister(info);
+				}
+			}
+			
+			checkSpelling = enable;
+		}
 	}
 	
 	
@@ -408,14 +432,21 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 		
 		final JTextArea text;
 		
-//		private boolean checkSpelling = true;
+		private boolean checkSpelling = true;
+		
+		private final Consumer<DeletableElement> deleteL;
+		private final BoolChangeListener invalidL;
+		private final IntChangeListener posL,
+										sizeL;
 		
 		public TextViewer(DataViewer parent, Text t) {
 			super(parent);
 			this.t = t;
-			t.addDeleteListener(e -> {
+			t.addDeleteListener(deleteL = e -> {
+				destroy();
 				Container c = getParent(); // don't confuse this with parent, which would be the DataViewer and not the containing container
 				c.remove(this);
+//				c.revalidate(); // if there are issues with the gui, try uncommenting this
 				c.repaint();
 				parent.updateTextsTitle();
 			});
@@ -427,8 +458,8 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 			Editor $ = Editor.$;
 			if($.hasSpellCheck && $.useSpellChecking())
 				SpellChecker.register(text);
-//			else
-//				checkSpelling = false;
+			else
+				checkSpelling = false;
 			text.setText(s);
 			text.getDocument().addDocumentListener(new DocumentListener() {
 				
@@ -454,7 +485,7 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 				}
 			});
 			textColor = text.getForeground();
-			t.isInvalid.add(e -> {
+			t.isInvalid.add(invalidL = e -> {
 				if(e.newVal) {
 					text.setForeground(invalidColor);
 					l.setForeground(invalidColor);
@@ -482,15 +513,17 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 			pos.setText(createPositionText());
 			pos.setBorder(textBorder);
 			add(pos);
-			t.x.add(e -> pos.setText(createPositionText()));
-			t.y.add(e -> pos.setText(createPositionText()));
+			posL = e -> pos.setText(createPositionText());
+			t.x.add(posL);
+			t.y.add(posL);
 
 			JLabel size = new JLabel();
 			size.setText(createSizeText());
 			size.setBorder(textBorder);
 			add(size);
-			t.w.add(e -> size.setText(createSizeText()));
-			t.h.add(e -> size.setText(createSizeText()));
+			sizeL = e -> size.setText(createSizeText());
+			t.w.add(sizeL);
+			t.h.add(sizeL);
 			
 			JButton delete = new JButton("Delete");
 			delete.addActionListener(e -> {
@@ -512,16 +545,25 @@ public class DataViewer extends JTabbedPane implements Unserialzable {
 			return "Size: " + t.w.get() + "x" + t.h.get() + "";
 		}
 		
-//		public void setSpellChecking(boolean enable) {
-//			if(Editor.$.hasSpellCheck && (enable != checkSpelling)) {
-//				if(enable) {
-//					SpellChecker.register(text);
-//				} else {
-//					SpellChecker.unregister(text);
-//				}
-//			}
-//			
-//			checkSpelling = enable;
-//		}
+		public void destroy() {
+			t.x.remove(posL);
+			t.y.remove(posL);
+			t.w.remove(sizeL);
+			t.h.remove(sizeL);
+			t.isInvalid.remove(invalidL);
+			t.removeDeleteListener(deleteL);
+		}
+		
+		public void setSpellChecking(boolean enable) {
+			if(Editor.$.hasSpellCheck && (enable != checkSpelling)) {
+				if(enable) {
+					SpellChecker.register(text);
+				} else {
+					SpellChecker.unregister(text);
+				}
+			}
+			
+			checkSpelling = enable;
+		}
 	}
 }

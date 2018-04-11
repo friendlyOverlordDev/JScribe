@@ -39,7 +39,10 @@ public class DeletableElement {
 	 * doesn't actually delete the note, however invokes all the delete listeners which should handle it.
 	 */
 	public void delete() {
-		for(Consumer<DeletableElement> l : deleteListener)
+		@SuppressWarnings("unchecked")
+		Consumer<DeletableElement>[] dL = (Consumer<DeletableElement>[]) deleteListener.toArray(new Consumer<?>[deleteListener.size()]);
+		for(Consumer<DeletableElement> l : dL)
 			l.accept(this);
+		deleteListener.clear();
 	}
 }

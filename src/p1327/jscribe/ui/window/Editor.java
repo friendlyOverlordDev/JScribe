@@ -95,13 +95,14 @@ public class Editor extends JFrame implements Unserialzable, Window {
 	public final DataViewer data;
 	
 	private final SubMenu zoom;
-	private final Item save, saveAs, saveArchive, export, iJSS, eJSS, zoomIn, zoomOut;
+	private final Item save, saveAs, saveArchive, export, iJSS, eJSS, zoomIn, zoomOut, pmAddImg, pmOverrideImg, pmCopyImg, pmRenameImg, pmDeleteImg;
 	private final RadioItem placeNote, placeText;
 	private final CheckItem spellChecking;
 	private final StatusBar status;
 	private final JScrollPane content;
 	
 	private JSArchive jsa = null;
+	private int currentImg = 0;
 	private boolean unsaved = false;
 	private File last = new File(".");
 	
@@ -212,19 +213,7 @@ public class Editor extends JFrame implements Unserialzable, Window {
 						}),
 						null,
 						save = new Item("Save", 's', "When already saved, overrides it,\notherwise saves as a new .jsc-file", e -> {
-							if(jsa == null)
-								return;
-							if(jsa.name != null || jsa.jscName != null) {
-								if(FileHandler.save(jsa)) {
-									unsaved = false;
-									showMessage("Saved! (" + UIText.getTime() + ")");
-								}
-								return;
-							}
-							
-							// file was never saved
-							saveAs();
-								
+							save();
 						}),
 						saveAs = new Item("Save As...", "Saves project as .jsc or .jsa-file, forces the save dialog to open", e -> {
 							if(jsa == null)
@@ -326,8 +315,125 @@ public class Editor extends JFrame implements Unserialzable, Window {
 							exportJSS.setCurrentDirectory(last);
 							if(exportJSS.showSaveDialog(Editor.this) == JFileChooser.APPROVE_OPTION)
 								FileHandler.exportJSS(jsa.jsc.jss.get(), last = exportJSS.getSelectedFile());
+						}),
+						null,
+						pmAddImg = new Item("Add Image", "Adds a new image to the current project", e -> {
+							importImg.setCurrentDirectory(last);
+							if(importImg.showOpenDialog(Editor.this) == JFileChooser.APPROVE_OPTION) {
+								last = importImg.getSelectedFile();
+								JSArchive jsa = getJSA();
+								try{
+									jsa.add(last);
+									pages.maxPage.set(jsa.size());
+								}catch(Exception ex) {
+									Message.error("Failed to add Image", ex);
+								}
+							}
+						}),
+						pmOverrideImg = new Item("Override Image", "Replaces the current image with a new one\n(content only; the text, notes and names will stay)", e -> {
+							importImg.setCurrentDirectory(last);
+							if(importImg.showOpenDialog(Editor.this) == JFileChooser.APPROVE_OPTION) {
+								JSArchive njsa = FileHandler.importImg(last = importImg.getSelectedFile()),
+										  jsa = getJSA();
+								if(jsa.jscName != null) {
+									try {
+										FileHandler.copy(njsa.getFile(0), jsa.getFile(currentImg));
+									}catch(Exception ex) {
+										Message.error("Failed to override Image", ex);
+										return;
+									}
+								}
+								jsa.set(currentImg, njsa.get(0));
+								viewer.repaint();
+							}
+						}),
+						pmCopyImg = new Item("Copy Image", "Copies the current image, including notes and texts",  e -> {
+							if(!Message.yesno("Save to copy Image", "All changes need to be saved to copy an image. Continue?"))
+								return;
+							save();
+							JSArchive jsa = getJSA();
+							JSImg img = jsa.jsc.imgs.get(currentImg);
+							String old = img.img;
+							String newName = Message.input("Copy Image", "The new name for the copy of " + old + " (without file extensions):");
+							if(newName == null)
+								return;
+							if(newName.length() < 1 || newName.indexOf('\\') > -1 || newName.indexOf('/') > -1 || !Static.validateFile(newName)) {
+								Message.error("Invalid Name", "Failed to copy the file, the name " + newName + " was invalid");
+								return;
+							}
+							String ext = old.substring(old.lastIndexOf('.'));
+							newName += ext;
+							for(JSImg i : jsa.jsc.imgs)
+								if(i.img.equals(newName)) {
+									Message.error("Invalid Name", "File " + newName + " is already part of the project");
+									return;
+								}
+							File newFile = null;
+							if(jsa.jscName != null) {
+								File current = jsa.getFile(currentImg);
+								File parent = current.getParentFile();
+								newFile = new File(parent.getAbsolutePath() + "/" + newName);
+								if(newFile.exists()) {
+									Message.error("Invalid Name", "File " + newFile + " already exists and isn't part of the project");
+									return;
+								}
+								try {
+									FileHandler.copy(jsa.getFile(currentImg), newFile);
+								}catch(Exception ex) {
+									Message.error("Copy Failed", ex);
+									return;
+								}
+							}
+							jsa.copy(currentImg, newName, newFile);
+							updateJSA(jsa);
+						}),
+						pmRenameImg = new Item("Rename Image", "Renames the current image", e -> {
+							if(!Message.yesno("Save to rename Image", "All changes need to be saved to rename an image. Continue?"))
+								return;
+							save();
+							JSArchive jsa = getJSA();
+							JSImg img = jsa.jsc.imgs.get(currentImg);
+							String old = img.img;
+							String newName = Message.input("Rename Image", "The new name for " + old + " (without file extensions):");
+							if(newName == null)
+								return;
+							if(newName.length() < 1 || newName.indexOf('\\') > -1 || newName.indexOf('/') > -1 || !Static.validateFile(newName)) {
+								Message.error("Invalid Name", "Failed to rename the file, the name '" + newName + "' was invalid");
+								return;
+							}
+							String ext = old.substring(old.lastIndexOf('.'));
+							newName += ext;
+							for(JSImg i : jsa.jsc.imgs)
+								if(i.img.equals(newName)) {
+									Message.error("Invalid Name", "File " + newName + " is already part of the project");
+									return;
+								}
+							if(jsa.jscName != null) {
+								File current = jsa.getFile(currentImg);
+								File parent = current.getParentFile();
+								File newFile = new File(parent.getAbsolutePath() + "/" + newName);
+								if(newFile.exists()) {
+									Message.error("Invalid Name", "File " + newFile + " already exists and isn't part of the project");
+									return;
+								}
+								current.renameTo(newFile);
+								jsa.setFile(currentImg, newFile);
+							}
+							img.img = newName;
+							setTitle("JScribe - " + img.img);
+						}),
+						pmDeleteImg = new Item("Delete Image", "Deletes the current image", e -> {
+							JSArchive jsa = getJSA();
+							if(jsa.size() < 2) {
+								Message.error("Delete Error", "Can't delete the last File in a Project");
+								return;
+							}
+							String name = jsa.jsc.imgs.get(currentImg).img;
+							if(Message.yesno("Delete Image?", "Are you sure you want to delete " + name + "?\nTexts and notes will be lost forever.")) {
+								jsa.remove(currentImg);
+								updateJSA(jsa);
+							}
 						})
-						// add another image
 				),
 				zoom = new SubMenu("Zoom",
 						zoomIn = new Item("Zoom in", (char)KeyEvent.VK_PLUS, "Increases the visual size of the image and text (doesn't apply to the export)",  e -> {
@@ -422,6 +528,11 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		iJSS.setEnabled(false);
 		eJSS.setEnabled(false);
 		
+		pmAddImg.setEnabled(false);
+		pmOverrideImg.setEnabled(false);
+		pmCopyImg.setEnabled(false);
+		pmRenameImg.setEnabled(false);
+		pmDeleteImg.setEnabled(false);
 		
 		ButtonGroup group = new ButtonGroup();
 		group.add(placeNote);
@@ -504,6 +615,12 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		export.setEnabled(true);
 		iJSS.setEnabled(true);
 		eJSS.setEnabled(true);
+		
+		pmAddImg.setEnabled(true);
+		pmOverrideImg.setEnabled(true);
+		pmCopyImg.setEnabled(true);
+		pmRenameImg.setEnabled(true);
+		pmDeleteImg.setEnabled(true);
 	}
 	
 	public JSArchive getJSA() {
@@ -518,6 +635,7 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		content.getHorizontalScrollBar().setValue(0);
 		content.revalidate();
 		setTitle("JScribe - " + img.img);
+		currentImg = index;
 	}
 	
 	public void showMessage(String msg) {
@@ -565,6 +683,21 @@ public class Editor extends JFrame implements Unserialzable, Window {
 	
 	public boolean useSpellChecking() {
 		return spellChecking.isSelected();
+	}
+	
+	void save() {
+		if(jsa == null)
+			return;
+		if(jsa.name != null || jsa.jscName != null) {
+			if(FileHandler.save(jsa)) {
+				unsaved = false;
+				showMessage("Saved! (" + UIText.getTime() + ")");
+			}
+			return;
+		}
+		
+		// file was never saved
+		saveAs();
 	}
 	
 	void saveAs() {

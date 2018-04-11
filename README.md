@@ -17,6 +17,14 @@ With the style editor and a tag-based styling system the style of multiple compo
 
 
 ### Changelog
+* [0.7.1](https://github.com/friendlyOverlordDev/JScribe/releases/download/0.7.1/JScribe-0.7.1.zip "Download")
+	* Images in a project can now be:
+		- added
+		- replaced
+		- renamed
+		- copied
+		- deleted
+	* Changes to styles will update on the fly and not only after closing the window.
 * [0.7.0](https://github.com/friendlyOverlordDev/JScribe/releases/download/0.7.0/JScribe-0.7.0.zip "Download")
 	* JOrtho was added as a spell checker (currently english only, however it can be expanded if needed)
 	* some simple zooming is now possible

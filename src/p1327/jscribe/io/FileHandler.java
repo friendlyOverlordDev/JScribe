@@ -27,6 +27,7 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
@@ -85,7 +86,34 @@ public class FileHandler {
 					throw e;
 				}
 			} else if(jsa.jscName != null) {
-				try(FileWriter fw = new FileWriter(jsa.jscName)){
+				File target = jsa.jscName;
+				File parent = target.getParentFile();
+				String[] files = parent.list();
+				String srcName;
+				File src, dest;
+				boolean canCopy;
+				
+				// check if there are files which are missing in the directory where we want to safe it
+				for(int i = 0, l = jsa.imgFiles.size(); i < l; i++) {
+					src = jsa.imgFiles.get(i);
+					canCopy = true;
+					if(src == null) {
+						// it was an archive -> no sources given
+						canCopy = false;
+						srcName = jsa.jsc.imgs.get(i).img;
+					}else
+						srcName = src.getName();
+					dest = new File(parent.getAbsolutePath() + "/" + srcName);
+					if(!arrayHas(files, srcName)) {
+						if(canCopy)
+							copy(src, dest);
+						else 
+							writeImage(jsa.get(i), srcName.substring(srcName.lastIndexOf('.') + 1), dest);
+					}
+					jsa.imgFiles.set(i, dest);
+				}
+				
+				try(FileWriter fw = new FileWriter(target)){
 					jsa.jsc.toJSON().write(fw);
 					fw.close();
 					return true;
@@ -105,11 +133,8 @@ public class FileHandler {
 		try{
 			if(!img.isFile())
 				throw new IOException(img.getAbsolutePath() + " isn't a file");
-			BufferedImage bi = ImageIO.read(img);
-			if(bi == null)
-				throw new IOException("Failed to open Image...");
-			JSArchive jsa = new JSArchive(img.getParentFile());
-			jsa.add(img.getName(), bi);
+			JSArchive jsa = new JSArchive();
+			jsa.add(img);
 			return jsa;
 		}catch(Exception e) {
 			Message.error("Import Error", e);
@@ -133,13 +158,9 @@ public class FileHandler {
 			});
 			if(imgs.length < 1)
 				throw new IOException("No importable Images in " + dir.getAbsolutePath());
-			JSArchive jsa = new JSArchive(dir);
-			for(File img : imgs) {
-				BufferedImage bi = ImageIO.read(img);
-				if(bi == null)
-					throw new IOException("Failed to open Image " + img.getAbsolutePath());
-				jsa.add(img.getName(), bi);
-			}
+			JSArchive jsa = new JSArchive();
+			for(File img : imgs)
+				jsa.add(img);
 			return jsa;
 		}catch(Exception e) {
 			Message.error("Import Error", e);
@@ -261,5 +282,39 @@ public class FileHandler {
 		writer.setOutput(out);
 		writer.write(null, new IIOImage(img, null, null), writerParam);
 		writer.dispose();
+	}
+	
+
+	public static boolean copy(File src, File des) throws IOException{
+		if(!src.isFile())
+			return false;
+		des.getParentFile().mkdirs();
+		try(
+			FileInputStream fis = new FileInputStream(src);
+			FileChannel in = fis.getChannel();
+			FileOutputStream fos = new FileOutputStream(des);
+			FileChannel out = fos.getChannel();
+				){
+			int maxCount = (64 * 1024 * 1024) - (32 * 1024);
+			long size = in.size();
+			long position = 0;
+			while(position < size)
+				position += in.transferTo(position, maxCount, out);
+			in.close();
+			fis.close();
+			out.close();
+			fos.flush();
+			fos.close();
+			return true;
+		}catch(IOException e){
+			throw e;
+		}
+	}
+	
+	private static <T> boolean arrayHas(T[] array, T obj) {
+		for(T t : array)
+			if(t.equals(obj))
+				return true;
+		return false;
 	}
 }

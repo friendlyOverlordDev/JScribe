@@ -28,14 +28,18 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.geom.AffineTransform;
+import java.util.function.Consumer;
 
 import javax.swing.JComponent;
 
 import p1327.jscribe.io.data.Note;
+import p1327.jscribe.io.data.prototype.DeletableElement;
 import p1327.jscribe.ui.window.Editor;
 import p1327.jscribe.util.Static;
 import p1327.jscribe.util.UIText;
 import p1327.jscribe.util.Unserialzable;
+import p1327.jscribe.util.data.event.ChangeListener;
+import p1327.jscribe.util.data.event.IntChangeListener;
 
 public class NotePoint extends JComponent implements Unserialzable {
 	
@@ -46,6 +50,11 @@ public class NotePoint extends JComponent implements Unserialzable {
 	EditMode mode = EditMode.NONE;
 	int startX, startY, // position on view
 		startSX, startSY; // position on screen
+	
+	private final Consumer<DeletableElement> deleteL;
+	private final ChangeListener<String> infoL;
+	private final IntChangeListener xChangeL,
+									yChangeL;
 	
 	public NotePoint(Note _note) {
 		setSize(size, size);
@@ -111,15 +120,24 @@ public class NotePoint extends JComponent implements Unserialzable {
 		setLocation(_note.x.get(), _note.y.get());
 		setToolTipText(UIText.displayable(_note.info.get()));
 		this.note = _note;
-		_note.x.add(e -> setLocation(e.newVal, _note.y.get()));
-		_note.y.add(e -> setLocation(_note.x.get(), e.newVal));
-		_note.info.add(e -> setToolTipText(UIText.displayable(e.newVal)));
+		_note.x.add(xChangeL = e -> setLocation(e.newVal, _note.y.get()));
+		_note.y.add(yChangeL = e -> setLocation(_note.x.get(), e.newVal));
+		_note.info.add(infoL = e -> setToolTipText(UIText.displayable(e.newVal)));
 		
-		_note.addDeleteListener(n -> {
+		_note.addDeleteListener(deleteL = n -> {
 			Container c = getParent();
+			if(c == null)
+				return;
 			c.remove(this);
 			c.repaint();
 		});
+	}
+	
+	public void delete() {
+		note.x.remove(xChangeL);
+		note.y.remove(yChangeL);
+		note.info.remove(infoL);
+		note.removeDeleteListener(deleteL);
 	}
 	
 	public Note getNote() {

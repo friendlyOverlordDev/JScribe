@@ -45,6 +45,7 @@ import javax.swing.border.EmptyBorder;
 
 import p1327.jscribe.io.data.Style;
 import p1327.jscribe.io.data.TaggedStyle;
+import p1327.jscribe.ui.window.Editor;
 import p1327.jscribe.util.Static;
 import p1327.jscribe.util.UIText;
 import p1327.jscribe.util.Unserialzable;
@@ -77,14 +78,21 @@ public class StyleElement extends JPanel implements Unserialzable{
 	public final JButton moveLeft, moveRight;
 	private final JButton more;
 	
-	public final Vector<BiConsumer<Style, String>> removeListener = new Vector<>();
+	public final Vector<BiConsumer<Style, String>> removeListener = new Vector<>(),
+												   changeListener = new Vector<>();
 	
 	public StyleElement(TaggedStyle ts) {
 		this(ts.style, ts.tag.get());
 	}
 	
+	private final Style style;
+	private final String tag;
+	
 	public StyleElement(final Style s, final String name) {
 		setLayout(new BorderLayout());
+		
+		style = s;
+		tag = name;
 		
 		JLabel l = new JLabel(name);
 		l.setHorizontalAlignment(SwingConstants.CENTER);
@@ -141,6 +149,15 @@ public class StyleElement extends JPanel implements Unserialzable{
 		wrapper.add(more);
 		
 		add(wrapper, BorderLayout.SOUTH);
+		
+		changeListener.add((_s, _t) -> {
+			Editor.$.viewer.repaint();
+		});
+		
+	}
+	
+	public void destroy() {
+		
 	}
 	
 	public StyleElement setMain(boolean b) {
@@ -160,6 +177,11 @@ public class StyleElement extends JPanel implements Unserialzable{
 		return this;
 	}
 	
+	private void fireChange() {
+		for(BiConsumer<Style, String> cl : changeListener)
+			cl.accept(style, tag);
+	}
+	
 	private void createBoolOpt(String name, BoolProperty value, BoolProperty inUse, String label) {
 		final JPanel wrapper = new JPanel(new BorderLayout());
 		
@@ -167,6 +189,7 @@ public class StyleElement extends JPanel implements Unserialzable{
 		opt.setSelected(value.get());
 		opt.addActionListener(e -> {
 			value.set(opt.isSelected());
+			fireChange();
 		});
 		wrapper.add(opt);
 		
@@ -186,6 +209,7 @@ public class StyleElement extends JPanel implements Unserialzable{
 		tBold.setSelected((val & Style.BOLD) > 0);
 		tBold.addActionListener(e -> {
 			value.set((tBold.isSelected() ? Style.BOLD : 0) | (tItalic.isSelected() ? Style.ITALIC : 0));
+			fireChange();
 		});
 		wrapper.add(tBold);
 		
@@ -193,6 +217,7 @@ public class StyleElement extends JPanel implements Unserialzable{
 		tItalic.setSelected((val & Style.ITALIC) > 0);
 		tItalic.addActionListener(e -> {
 			value.set((tBold.isSelected() ? Style.BOLD : 0) | (tItalic.isSelected() ? Style.ITALIC : 0));
+			fireChange();
 		});
 		wrapper.add(tItalic);
 		
@@ -209,6 +234,7 @@ public class StyleElement extends JPanel implements Unserialzable{
 		ColorField cf = new ColorField(value.get());
 		cf.color.add(e -> {
 			value.set(e.newVal);
+			fireChange();
 		});
 		makeCheckable(name, cf, inUse);
 	}
@@ -231,6 +257,7 @@ public class StyleElement extends JPanel implements Unserialzable{
 		box.setSelectedItem(data[v]);
 		box.addItemListener(e -> {
 			value.set(box.getSelectedIndex() + diff);
+			fireChange();
 		});
 		makeCheckable(name, box, inUse);
 	}
@@ -240,6 +267,7 @@ public class StyleElement extends JPanel implements Unserialzable{
 		box.setSelectedItem(value.get());
 		box.addItemListener(e -> {
 			value.set(box.getSelectedItem().toString());
+			fireChange();
 		});
 		makeCheckable(name, box, inUse);
 	}
@@ -253,6 +281,7 @@ public class StyleElement extends JPanel implements Unserialzable{
 		JSpinner spinner = new JSpinner(new SpinnerNumberModel(v, min, max, step));
 		spinner.addChangeListener(e -> {
 			value.set((double)spinner.getValue());
+			fireChange();
 		});
 		makeCheckable(name, spinner, inUse);
 	}
@@ -266,6 +295,7 @@ public class StyleElement extends JPanel implements Unserialzable{
 		JSpinner spinner = new JSpinner(new SpinnerNumberModel(v, min, max, 1));
 		spinner.addChangeListener(e -> {
 			value.set((int)spinner.getValue());
+			fireChange();
 		});
 		makeCheckable(name, spinner, inUse);
 	}
@@ -295,6 +325,7 @@ public class StyleElement extends JPanel implements Unserialzable{
 			boolean b = used.isSelected();
 			inUse.set(b);
 			c.setEnabled(b);
+			fireChange();
 		});
 		boxes.add(used);
 		

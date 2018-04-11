@@ -21,12 +21,14 @@ package p1327.jscribe.util;
  */
 
 import java.awt.GraphicsEnvironment;
+import java.io.File;
+import java.io.IOException;
 
 public class Static {
 	
 	private Static() {}
 	
-	public static final String version = "0.7.0";
+	public static final String version = "0.7.1";
 	
 	public static final int zoomSteps = 1;
 	public static final int minZoom = -3;
@@ -36,6 +38,17 @@ public class Static {
 		if(zoomLevel == 0)
 			return 1;
 		return Math.pow(2, zoomLevel * zoomSteps);
+	}
+	
+	public static boolean validateFile(String file) {
+		try {
+			File f = new File(file);
+			f.getCanonicalPath();
+			return true;
+		}catch(IOException e) {
+		}
+		
+		return false;
 	}
 	
 	public static final String[] supportedTypeList = {"png", "jpg", "jpeg", "gif"};
