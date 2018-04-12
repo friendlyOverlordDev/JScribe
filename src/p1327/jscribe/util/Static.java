@@ -28,7 +28,7 @@ public class Static {
 	
 	private Static() {}
 	
-	public static final String version = "0.7.1";
+	public static final String version = "0.8.0";
 	
 	public static final int zoomSteps = 1;
 	public static final int minZoom = -3;
