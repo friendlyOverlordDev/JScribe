@@ -24,6 +24,7 @@ import java.awt.Color;
 import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Graphics;
+import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
@@ -34,6 +35,7 @@ import javax.swing.JComponent;
 
 import p1327.jscribe.io.data.Note;
 import p1327.jscribe.io.data.prototype.DeletableElement;
+import p1327.jscribe.time.Time;
 import p1327.jscribe.ui.window.Editor;
 import p1327.jscribe.util.Static;
 import p1327.jscribe.util.UIText;
@@ -65,13 +67,26 @@ public class NotePoint extends JComponent implements Unserialzable {
 			
 			@Override
 			public void mouseReleased(MouseEvent e) {
+				if(e.getButton() != MouseEvent.BUTTON1)
+					return;
 				if(mode == EditMode.OPEN)
 					Editor.$.data.setActive(note);
+				else if(mode == EditMode.MOVE) {
+					final Point nVal = new Point(note.x.get(), note.y.get()),
+								oVal = new Point(startX, startY);
+					Time.rec(()->{
+						note.setLocation(nVal);
+					}, () -> {
+						note.setLocation(oVal);
+					});
+				}
 				mode = EditMode.NONE;
 			}
 			
 			@Override
 			public void mousePressed(MouseEvent e) {
+				if(e.getButton() != MouseEvent.BUTTON1)
+					return;
 				mode = EditMode.OPEN;
 				startX = _note.x.get();
 				startY = _note.y.get();
@@ -125,19 +140,20 @@ public class NotePoint extends JComponent implements Unserialzable {
 		_note.info.add(infoL = e -> setToolTipText(UIText.displayable(e.newVal)));
 		
 		_note.addDeleteListener(deleteL = n -> {
-			Container c = getParent();
-			if(c == null)
-				return;
-			c.remove(this);
-			c.repaint();
+			destroy();
 		});
 	}
 	
-	public void delete() {
+	public void destroy() {
 		note.x.remove(xChangeL);
 		note.y.remove(yChangeL);
 		note.info.remove(infoL);
 		note.removeDeleteListener(deleteL);
+		Container c = getParent();
+		if(c == null)
+			return;
+		c.remove(this);
+		c.repaint();
 	}
 	
 	public Note getNote() {

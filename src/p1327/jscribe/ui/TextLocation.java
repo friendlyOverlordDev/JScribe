@@ -23,18 +23,21 @@ package p1327.jscribe.ui;
 import java.awt.Color;
 import java.awt.Container;
 import java.awt.Cursor;
+import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.geom.AffineTransform;
+import java.awt.image.BufferedImage;
 import java.util.function.Consumer;
 
 import javax.swing.JComponent;
 
 import p1327.jscribe.io.data.Text;
 import p1327.jscribe.io.data.prototype.DeletableElement;
+import p1327.jscribe.time.Time;
 import p1327.jscribe.ui.window.Editor;
 import p1327.jscribe.ui.window.StyleEditor;
 import p1327.jscribe.util.Renderer;
@@ -44,6 +47,8 @@ import p1327.jscribe.util.data.event.ChangeListener;
 import p1327.jscribe.util.data.event.IntChangeListener;
 
 public class TextLocation extends JComponent implements Unserialzable {
+	
+	private static final int maxAutoSize = 500;
 	
 	private static final int border = 3;
 	private static final int border2 = border * 2;
@@ -76,6 +81,8 @@ public class TextLocation extends JComponent implements Unserialzable {
 			
 			@Override
 			public void mouseReleased(MouseEvent e) {
+				if(e.getButton() != MouseEvent.BUTTON1)
+					return;
 				if(mode == EditMode.OPEN) {
 					Editor.$.data.setActive(text);
 					if(e.getClickCount() == 2) {
@@ -83,12 +90,34 @@ public class TextLocation extends JComponent implements Unserialzable {
 						se.setVisible(true);
 						Editor.$.viewer.repaint();
 					}
+				}else if(mode == EditMode.MOVE) {
+					final Point nVal = new Point(text.x.get(), text.y.get()),
+								oVal = pos;
+					Time.rec(()->{
+						text.setLocation(nVal);
+					}, () -> {
+						text.setLocation(oVal);
+					});
+				}else if(mode == EditMode.RESIZE) {
+					final Point nVal = new Point(text.x.get(), text.y.get()),
+								oVal = pos;
+					final Dimension nDim = new Dimension(text.w.get(), text.h.get()),
+									oDim = new Dimension(posSize.x - pos.x, posSize.y - pos.y);
+					Time.rec(()->{
+						text.setLocation(nVal);
+						text.setSize(nDim);
+					}, () -> {
+						text.setLocation(oVal);
+						text.setSize(oDim);
+					});
 				}
 				mode = EditMode.NONE;
 			}
 			
 			@Override
 			public void mousePressed(MouseEvent e) {
+				if(e.getButton() != MouseEvent.BUTTON1)
+					return;
 				mode = EditMode.OPEN;
 				startX = _text.x.get();
 				startY = _text.y.get();
@@ -230,21 +259,22 @@ public class TextLocation extends JComponent implements Unserialzable {
 		_text.text.add(textL = e -> repaint());
 		
 		_text.addDeleteListener(deleteL = n -> {
-			Container c = getParent();
-			if(c == null)
-				return;
-			c.remove(this);
-			c.repaint();
+			destroy();
 		});
 	}
 	
-	public void delete() {
+	public void destroy() {
 		text.x.remove(xChangeL);
 		text.y.remove(yChangeL);
 		text.w.remove(wChangeL);
 		text.h.remove(hChangeL);
 		text.text.remove(textL);
 		text.removeDeleteListener(deleteL);
+		Container c = getParent();
+		if(c == null)
+			return;
+		c.remove(this);
+		c.repaint();
 	}
 	
 	public Text getText() {
@@ -281,6 +311,126 @@ public class TextLocation extends JComponent implements Unserialzable {
 		text.y.set(y);
 		text.w.set(w);
 		text.h.set(h);
+	}
+	
+	public static void findBorders(Text t, BufferedImage img, Point p) {
+		int x = findLeftBorder(img, p),
+			y = findTopBorder(img, p),
+			x2 = findRightBorder(img, p),
+			y2 = findBottomBorder(img, p),
+			w = x2 - x,
+			h = y2 - y,
+			i1, i2;
+		
+		if(w > maxAutoSize) {
+			i1 = p.x - x;
+			i2 = x2 - p.x;
+			if(i1 <= maxAutoSize)
+				x2 = x + maxAutoSize;
+			else if(i2 <= maxAutoSize)
+				x = x2 - maxAutoSize;
+			else {
+				x = p.x - maxAutoSize / 2;
+				x2 = p.x + maxAutoSize / 2;
+			}
+			w = maxAutoSize;
+		}
+		if(h > maxAutoSize) {
+			i1 = p.y - y;
+			i2 = y2 - p.y;
+			if(i1 <= maxAutoSize)
+				y2 = y + maxAutoSize;
+			else if(i2 <= maxAutoSize)
+				y = y2 - maxAutoSize;
+			else {
+				y = p.y - maxAutoSize / 2;
+				y2 = p.y + maxAutoSize / 2;
+			}
+			h = maxAutoSize;
+		}
+		
+		t.setLocation(new Point(x, y));
+		t.setSize(new Dimension(w, h));
+	}
+	
+	private static int findLeftBorder(BufferedImage img, Point p) {
+		return findXBorder(img, p, -1);
+	}
+	
+	private static int findRightBorder(BufferedImage img, Point p) {
+		return findXBorder(img, p, 1);
+	}
+	
+	private static int findTopBorder(BufferedImage img, Point p) {
+		return findYBorder(img, p, -1);
+	}
+	
+	private static int findBottomBorder(BufferedImage img, Point p) {
+		return findYBorder(img, p, 1);
+	}
+	
+	private static int findXBorder(BufferedImage img, Point p, int dir) {
+		int x = p.x;
+		int y = p.y;
+		int yMin, last, tmp, h, comp;
+		ColorVector cv = new ColorVector(img.getRGB(x, y));
+		h = img.getHeight() - 1;
+		comp = (dir < 0) ? 0 : img.getWidth() - 1;
+		
+		while(true) {
+			// search for border
+			last = x;
+			while(cv.isSimilar(new ColorVector(img.getRGB(x += dir, y))))
+				if(x == comp)
+					return comp;
+			x -= dir;
+			if(last == x) // readed a border
+				return x - dir; // add a bit of a margin
+			
+			// search for border in y direction
+			tmp = y;
+			while(cv.isSimilar(new ColorVector(img.getRGB(x, --tmp))))
+				if(tmp == 0)
+					break;
+			yMin = tmp;
+			tmp = y;
+			while(cv.isSimilar(new ColorVector(img.getRGB(x, ++tmp))))
+				if(tmp == h)
+					break;
+			y = (tmp - yMin) / 2 + yMin;
+		}
+	}
+	
+	private static int findYBorder(BufferedImage img, Point p, int dir) {
+		int x = p.x;
+		int y = p.y;
+		int xMin, last, tmp, w, comp;
+		ColorVector cv = new ColorVector(img.getRGB(x, y));
+		w = img.getWidth() - 1;
+		comp = (dir < 0) ? 0 : img.getHeight() - 1;
+		
+		while(true) {
+			// search for border
+			last = y;
+			while(cv.isSimilar(new ColorVector(img.getRGB(x, y += dir))))
+				if(y == comp)
+					return comp;
+			y -= dir;
+			if(last == y) // readed a border
+				return y - dir; // add a bit of a margin
+			
+			// search for border in x direction
+			tmp = x;
+			while(cv.isSimilar(new ColorVector(img.getRGB(--tmp, y))))
+				if(tmp == 0)
+					break;
+			xMin = tmp;
+			tmp = x;
+			while(cv.isSimilar(new ColorVector(img.getRGB(++tmp, y))))
+				if(tmp == w)
+					break;
+			x = (tmp - xMin) / 2 + xMin;
+		}
 	}
 	
 	@Override
@@ -326,5 +476,23 @@ public class TextLocation extends JComponent implements Unserialzable {
 	
 	static enum Direction{
 		NONE, UP, DOWN, LEFT, RIGHT
+	}
+	
+	private static class ColorVector {
+		
+		private static final double div = 0.1;
+		
+		private final double r, g, b;
+		
+		public ColorVector(int rgb) {
+			// AARRGGBB
+			b = (rgb & 0xFF) / 255f;
+			g = ((rgb >> 8) & 0xFF) / 255f;
+			r = ((rgb >> 16) & 0xFF) / 255f;
+		}
+		
+		public boolean isSimilar(ColorVector c) {
+			return (Math.abs(r - c.r) + Math.abs(g - c.g) + Math.abs(b - c.b)) < div;
+		}
 	}
 }

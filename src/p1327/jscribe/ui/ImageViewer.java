@@ -24,12 +24,12 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Image;
 import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.geom.AffineTransform;
+import java.awt.image.BufferedImage;
 import java.util.Vector;
 
 import javax.swing.JPanel;
@@ -37,13 +37,16 @@ import javax.swing.JPanel;
 import p1327.jscribe.io.data.JSImg;
 import p1327.jscribe.io.data.Note;
 import p1327.jscribe.io.data.Text;
+import p1327.jscribe.time.Time;
 import p1327.jscribe.ui.window.Editor;
 import p1327.jscribe.util.Static;
 import p1327.jscribe.util.Unserialzable;
 
 public class ImageViewer extends JPanel implements Unserialzable{
 	
-	Image img = null;
+	private static final int minTextSize = 10;
+	
+	BufferedImage img = null;
 	JSImg jsimg = null;
 	
 	private int imgW = 0, imgH = 0;
@@ -61,7 +64,7 @@ public class ImageViewer extends JPanel implements Unserialzable{
 		this(null, null);
 	}
 	
-	public ImageViewer(Image _img, JSImg _jsimg) {
+	public ImageViewer(BufferedImage _img, JSImg _jsimg) {
 		setLayout(null);
 		setBackground(new Color(0x333333));
 		points = new Vector<>();
@@ -76,10 +79,18 @@ public class ImageViewer extends JPanel implements Unserialzable{
 				if(pMode == PlacementMode.NOTE) {
 					if(newPoint == null)
 						return;
+					// on delete the position isn't lost, so probably no recording is needed...
 					Editor.$.data.setActive(newPoint.note);
 				}else if(pMode == PlacementMode.TEXT){
 					if(newText == null)
 						return;
+					final Text t = newText.text;
+					final Point p = new Point(t.x.get(), t.y.get());
+					final Dimension d = new Dimension(t.w.get(), t.h.get());
+					final BufferedImage cImg = img;
+					if(d.width < minTextSize || d.height < minTextSize)
+						TextLocation.findBorders(t, cImg, p);
+					// on delete the position and size isn't lost, so probably no recording is needed...
 					Editor.$.data.setActive(newText.text);
 				}
 				newPoint = null;
@@ -93,37 +104,53 @@ public class ImageViewer extends JPanel implements Unserialzable{
 				if(e.getButton() != MouseEvent.BUTTON1)
 					return;
 				
-				Point m = e.getPoint();
+				final Point m = e.getPoint();
 				m.x /= zoomMultiplyer;
 				m.y /= zoomMultiplyer;
 				int h = getImgHeight() - 1, w = getImgWidth() - 1;
 				if(m.x < 0 || m.y < 0 || m.x > w || m.y > h)
 					return;
-				
+
+				final JSImg cImg = jsimg;
 				if(pMode == PlacementMode.NOTE) {
-					Note n = new Note("", 0, 0);
-					newPoint = new NotePoint(n);
-					newPoint.setZoom(zoomLevel);
-					add(newPoint);
-					points.add(newPoint);
-					jsimg.notes.add(n);
-					Editor.$.data.addNote(n);
-					n.setLocation(m);
-					n.addDeleteListener(jsimg.notes::remove);
-					
-					newPoint.repaint();
+					final Note n = new Note("", m.x, m.y);
+					Time.rec(() -> {
+						n.addDeleteListener(cImg.notes::remove);
+						cImg.notes.add(n);
+						
+						if(cImg != jsimg)
+							return;
+						
+						newPoint = new NotePoint(n);
+						newPoint.setZoom(zoomLevel);
+						add(newPoint);
+						points.add(newPoint);
+						Editor.$.data.addNote(n);
+						
+						newPoint.repaint();
+					}, () -> {
+						n.delete();
+					});
 				}else if(pMode == PlacementMode.TEXT){
-					Text t = new Text("", 0, 0, 0, 0);
-					newText = new TextLocation(t);
-					newText.setZoom(zoomLevel);
-					add(newText);
-					locations.add(newText);
-					jsimg.texts.add(newText.getText());
-					Editor.$.data.addText(t);
-					t.setLocation(start = m);
-					t.addDeleteListener(jsimg.texts::remove);
-					
-					newText.repaint();
+					final Text t = new Text("", m.x, m.y, 0, 0);
+					start = m;
+					Time.rec(() -> {
+						t.addDeleteListener(cImg.texts::remove);
+						cImg.texts.add(t);
+						
+						if(cImg != jsimg)
+							return;
+						
+						newText = new TextLocation(t);
+						newText.setZoom(zoomLevel);
+						add(newText);
+						locations.add(newText);
+						Editor.$.data.addText(t);
+						
+						newText.repaint();
+					}, () -> {
+						t.delete();
+					});
 				}
 			}
 			
@@ -155,12 +182,12 @@ public class ImageViewer extends JPanel implements Unserialzable{
 			setImage(_img, _jsimg);
 	}
 	
-	public void setImage(Image img, JSImg jsimg) {
+	public void setImage(BufferedImage img, JSImg jsimg) {
 		for(NotePoint p : points)
-			remove(p);
+			p.destroy();
 		points.clear();
 		for(TextLocation l : locations)
-			remove(l);
+			l.destroy();
 		locations.clear();
 		
 		this.img = img;
@@ -250,38 +277,62 @@ public class ImageViewer extends JPanel implements Unserialzable{
 		return nonTextElementsVisible;
 	}
 
-	private static final int area = 100;
-	public Text convertNoteToText(Note n) {
-		int x = n.x.get(),
-			y = n.y.get();
-		x -= area / 2;
-		y -= area / 2;
-		if(x < 0)
-			x = 0;
-		if(y < 0)
-			y = 0;
-		int w = x + area,
-			h = y + area,
-			wImg = getImgWidth(),
-			hImg = getImgHeight();
-		if(w > wImg)
-			x -= w - wImg;
-		if(h > hImg)
-			y -= h - hImg;
-		w = area;
-		h = area;
+//	private static final int area = 100;
+	public Text convertNoteToText(final Note n) {
+//		int x = n.x.get(),
+//			y = n.y.get();
+//		x -= area / 2;
+//		y -= area / 2;
+//		if(x < 0)
+//			x = 0;
+//		if(y < 0)
+//			y = 0;
+//		int w = x + area,
+//			h = y + area,
+//			wImg = getImgWidth(),
+//			hImg = getImgHeight();
+//		if(w > wImg)
+//			x -= w - wImg;
+//		if(h > hImg)
+//			y -= h - hImg;
+//		w = area;
+//		h = area;
+//		
+//		Text t = new Text(n.info.get(), x, y, w, h);
+		final Text t = new Text(n.info.get(), 0, 0, 0, 0);
+		TextLocation.findBorders(t, img, new Point(n.x.get(), n.y.get()));
+		final JSImg cImg = jsimg;
 		
-		Text t = new Text(n.info.get(), x, y, w, h);
+		Time.rec(() -> {
+			t.addDeleteListener(cImg.texts::remove);
+			cImg.texts.add(t);
+			n.delete();
+			
+			if(cImg != jsimg)
+				return;
+			
+			TextLocation nt = new TextLocation(t);
+			nt.setZoom(zoomLevel);
+			add(nt);
+			locations.add(nt);
+			Editor.$.data.addText(t);
+			
+		}, () -> {
+			n.addDeleteListener(cImg.notes::remove);
+			cImg.notes.add(n);
+			t.delete();
+			
+			if(cImg != jsimg)
+				return;
+			
+			NotePoint np = new NotePoint(n);
+			np.setZoom(zoomLevel);
+			add(np);
+			points.add(np);
+			Editor.$.data.addNote(n);
+			
+		});
 		
-		TextLocation nt = new TextLocation(t);
-		add(nt);
-		locations.add(nt);
-		jsimg.texts.add(nt.getText());
-		Editor.$.data.addText(t);
-		t.addDeleteListener(jsimg.texts::remove);
-		
-		n.delete();
-		
-		return null;
+		return t;
 	}
 }

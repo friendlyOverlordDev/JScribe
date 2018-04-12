@@ -36,7 +36,8 @@ public class DeletableElement {
 	}
 	
 	/**
-	 * doesn't actually delete the note, however invokes all the delete listeners which should handle it.
+	 * doesn't actually delete the note, however invokes all the delete listeners which should handle it.<br />
+	 * all deleteListeners are removed after a call (they shouldn't be needed since the object is expected to be destroyed)
 	 */
 	public void delete() {
 		@SuppressWarnings("unchecked")

@@ -52,6 +52,7 @@ import p1327.jscribe.io.FileHandler;
 import p1327.jscribe.io.JSArchive;
 import p1327.jscribe.io.JSS;
 import p1327.jscribe.io.data.JSImg;
+import p1327.jscribe.time.Time;
 import p1327.jscribe.ui.DataViewer;
 import p1327.jscribe.ui.ImageViewer;
 import p1327.jscribe.ui.Menu;
@@ -95,7 +96,7 @@ public class Editor extends JFrame implements Unserialzable, Window {
 	public final DataViewer data;
 	
 	private final SubMenu zoom;
-	private final Item save, saveAs, saveArchive, export, iJSS, eJSS, zoomIn, zoomOut, pmAddImg, pmOverrideImg, pmCopyImg, pmRenameImg, pmDeleteImg;
+	private final Item save, saveAs, saveArchive, export, iJSS, eJSS, zoomIn, zoomOut, pmAddImg, pmOverrideImg, pmCopyImg, pmRenameImg, pmDeleteImg, undo, redo;
 	private final RadioItem placeNote, placeText;
 	private final CheckItem spellChecking;
 	private final StatusBar status;
@@ -103,12 +104,12 @@ public class Editor extends JFrame implements Unserialzable, Window {
 	
 	private JSArchive jsa = null;
 	private int currentImg = 0;
-	private boolean unsaved = false;
+	private boolean _unsaved = false;
 	private File last = new File(".");
 	
 	public Editor() {
 		$ = this;
-		setTitle("JScribe");
+		setTitle();
 		setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
 		center(1200, 900);
 		
@@ -224,20 +225,16 @@ public class Editor extends JFrame implements Unserialzable, Window {
 							if(jsa == null)
 								return;
 							if(jsa.name != null) {
-								if(FileHandler.save(jsa)) {
-									unsaved = false;
-									showMessage("Archive saved! (" + UIText.getTime() + ")");
-								}
+								if(FileHandler.save(jsa))
+									setSaved();
 								return;
 							}
 							saveAsArchive.setCurrentDirectory(last);
 							if(saveAsArchive.showSaveDialog(Editor.this) == JFileChooser.APPROVE_OPTION) {
 								last =
 								jsa.name = saveAsArchive.getSelectedFile();
-								if(FileHandler.save(jsa)) {
-									unsaved = false;
-									showMessage("Archive saved! (" + UIText.getTime() + ")");
-								}
+								if(FileHandler.save(jsa))
+									setSaved();
 							}
 						}),
 						null,
@@ -282,6 +279,13 @@ public class Editor extends JFrame implements Unserialzable, Window {
 						})
 				),
 				new SubMenu("Edit",
+						undo = new Item("Undo", 'z', "Undo the last action", e -> {
+							Time.undo();
+						}),
+						redo = new Item("Redo", 'y', "Redo the last undone action", e-> {
+							Time.redo();
+						}),
+						null,
 						placeNote = new RadioItem("Place Notes", 'n', "Clicking on the image creates notes", e -> {
 							viewer.setMode(PlacementMode.NOTE);
 						}),
@@ -420,7 +424,7 @@ public class Editor extends JFrame implements Unserialzable, Window {
 								jsa.setFile(currentImg, newFile);
 							}
 							img.img = newName;
-							setTitle("JScribe - " + img.img);
+							setTitle();
 						}),
 						pmDeleteImg = new Item("Delete Image", "Deletes the current image", e -> {
 							JSArchive jsa = getJSA();
@@ -521,6 +525,17 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		});
 		content.setWheelScrollingEnabled(true);
 		
+		undo.setEnabled(false);
+		redo.setEnabled(false);
+		Time.timeEvent.add(()->{
+			boolean u = Time.canUndo(),
+					r = Time.canRedo();
+			undo.setEnabled(u);
+			redo.setEnabled(r);
+			if(u || r)
+				setUnsaved();
+		});
+		
 		save.setEnabled(false);
 		saveAs.setEnabled(false);
 		saveArchive.setEnabled(false);
@@ -571,13 +586,34 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		setVisible(true);
 	}
 	
+	public void setUnsaved() {
+		if(_unsaved == true)
+			return;
+		_unsaved = true;
+		setTitle();
+	}
+	
+	public void setTitle() {
+		super.setTitle((isUnsaved() ? "*" : "") + "JScribe" + (jsa == null ? "" : " - " + jsa.jsc.imgs.get(currentImg).img));
+	}
+	
+	private void setSaved() {
+		_unsaved = false;
+		setTitle();
+		showMessage("Saved! (" + UIText.getTime() + ")");
+	}
+	
+	public boolean isUnsaved() {
+		return _unsaved;
+	}
+	
 	/**
 	 * Checkes if there are currently unsaved changes in the project.<br>
 	 * If unsaved changes are found it asks the user if they want to continue.
 	 * @return Returns true if the user wants to cancel the current task and continue with the loaded project. Otherwise false.
 	 */
 	boolean isUnsavedAndCancel() {
-		if(!unsaved)
+		if(!isUnsaved())
 			return false;
 		
 		// x and cancel will preserve changes
@@ -590,7 +626,7 @@ public class Editor extends JFrame implements Unserialzable, Window {
 	 * @return true if we can, otherwise false
 	 */
 	boolean requestExit() {
-		if(!unsaved)
+		if(!isUnsaved())
 			return true;
 		return Message.yesno("Close without saving?", "There are unsaved chages!\nClose the Program anyway?");
 	}
@@ -604,10 +640,10 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		
 		pages.maxPage.set(imgs.size());
 		pages.currentPage.set(1);
+
+		_unsaved = false;
 		
 		setImgActive(0);
-		
-		unsaved = false;
 		
 		save.setEnabled(true);
 		saveAs.setEnabled(true);
@@ -621,6 +657,8 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		pmCopyImg.setEnabled(true);
 		pmRenameImg.setEnabled(true);
 		pmDeleteImg.setEnabled(true);
+		
+		Time.resetTime();
 	}
 	
 	public JSArchive getJSA() {
@@ -634,7 +672,7 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		content.getVerticalScrollBar().setValue(0);
 		content.getHorizontalScrollBar().setValue(0);
 		content.revalidate();
-		setTitle("JScribe - " + img.img);
+		setTitle();
 		currentImg = index;
 	}
 	
@@ -689,10 +727,8 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		if(jsa == null)
 			return;
 		if(jsa.name != null || jsa.jscName != null) {
-			if(FileHandler.save(jsa)) {
-				unsaved = false;
-				showMessage("Saved! (" + UIText.getTime() + ")");
-			}
+			if(FileHandler.save(jsa))
+				setSaved();
 			return;
 		}
 		
@@ -713,10 +749,8 @@ public class Editor extends JFrame implements Unserialzable, Window {
 				last =
 				jsa.jscName = f;
 				jsa.name = null;
-				if(FileHandler.save(jsa)) {
-					unsaved = false;
-					showMessage("File saved! (" + UIText.getTime() + ")");
-				}
+				if(FileHandler.save(jsa))
+					setSaved();
 			}
 		} else if(result == 1) { // == Archive
 			saveAsArchive.setCurrentDirectory(last);
@@ -728,10 +762,8 @@ public class Editor extends JFrame implements Unserialzable, Window {
 				last =
 				jsa.name = f;
 				jsa.jscName = null;
-				if(FileHandler.save(jsa)) {
-					unsaved = false;
-					showMessage("File saved! (" + UIText.getTime() + ")");
-				}
+				if(FileHandler.save(jsa))
+					setSaved();
 			}
 		}
 		// nothing was selected, the dialog was x-ed

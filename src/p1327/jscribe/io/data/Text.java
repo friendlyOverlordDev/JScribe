@@ -69,6 +69,9 @@ public class Text extends DeletableElement implements JSONable {
 		h = new IntProperty(text.getInt(H));
 		notes = JSON.extractAsJSONObjectToVector(text.getJSONArray(NOTES), o -> new SimpleNote(o));
 		tags = JSON.extractStrings(text.getJSONArray(TAGS));
+
+		for(SimpleNote sn : notes)
+			sn.addDeleteListener(notes::remove);
 	}
 	
 	@Override
