@@ -187,6 +187,7 @@ public class FileHandler {
 					throw new RuntimeException("Found image without file-format " + name);
 				ext = iname.substring(pos);
 				name = name + "." + ext;
+				img = new File(img.getParent() + "/" + name);
 			}
 			
 			BufferedImage out = Renderer.copy(jsa.get(0));

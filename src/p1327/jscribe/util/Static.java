@@ -28,7 +28,8 @@ public class Static {
 	
 	private Static() {}
 	
-	public static final String version = "0.8.0";
+	public static final String versionCheck = "https://raw.githubusercontent.com/friendlyOverlordDev/JScribe/master/version";
+	public static final String version = "0.8.1";
 	
 	public static final int zoomSteps = 1;
 	public static final int minZoom = -3;

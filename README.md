@@ -17,6 +17,9 @@ With the style editor and a tag-based styling system the style of multiple compo
 
 
 ### Changelog
+* [0.8.1](https://github.com/friendlyOverlordDev/JScribe/releases/download/0.8.1/JScribe-0.8.1.zip "Download")
+	* An info-message will pop up when an update is found. (and a forced search for updates is also possible)
+	* A small bug resulting in missing extensions when exporting a single file was fixed.
 * [0.8.0](https://github.com/friendlyOverlordDev/JScribe/releases/download/0.8.0/JScribe-0.8.0.zip "Download")
 	* A basic redo/undo functionality was added.
 	It should cover a lot of cases, however some complexer operations like deleted elements and changes to images from the 0.7.1 update are currently excluded.

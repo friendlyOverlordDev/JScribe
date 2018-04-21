@@ -32,6 +32,13 @@ public class Message {
 		return JOptionPane.showInputDialog(null, message, title, JOptionPane.PLAIN_MESSAGE);
 	}
 	
+	/**
+	 * shows options as dropdownmenu
+	 * @param title
+	 * @param message
+	 * @param options
+	 * @return
+	 */
 	public static String choice(String title, String message, String[] options) {
 //		return JOptionPane.showOptionDialog(null, message, title, -1, JOptionPane.PLAIN_MESSAGE, null, options, 0);
 		return (String)JOptionPane.showInputDialog(null, message, title, JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
@@ -70,6 +77,13 @@ public class Message {
 		return JOptionPane.showOptionDialog(null, message, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null) == OK;
 	}
 	
+	/**
+	 * shows options as button
+	 * @param title
+	 * @param message
+	 * @param options
+	 * @return
+	 */
 	public static int options(String title, String message, String...options) {
 		return JOptionPane.showOptionDialog(null, message, title, JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, null);
 	}

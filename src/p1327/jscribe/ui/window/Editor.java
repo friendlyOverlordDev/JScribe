@@ -52,6 +52,7 @@ import p1327.jscribe.io.FileHandler;
 import p1327.jscribe.io.JSArchive;
 import p1327.jscribe.io.JSS;
 import p1327.jscribe.io.data.JSImg;
+import p1327.jscribe.net.UpdateCheckThread;
 import p1327.jscribe.time.Time;
 import p1327.jscribe.ui.DataViewer;
 import p1327.jscribe.ui.ImageViewer;
@@ -468,6 +469,9 @@ public class Editor extends JFrame implements Unserialzable, Window {
 								Message.error("Failed to open the Homepage!", ex);
 							}
 						}),
+						new Item("Check for Updates", "Searches for an Update", e-> {
+							new UpdateCheckThread(true);
+						}),
 						new Item("Donate", "Support the developer with a donation", e -> {
 							new SupportDev();
 						}),
@@ -584,6 +588,8 @@ public class Editor extends JFrame implements Unserialzable, Window {
 		});
 		
 		setVisible(true);
+		
+		new UpdateCheckThread();
 	}
 	
 	public void setUnsaved() {

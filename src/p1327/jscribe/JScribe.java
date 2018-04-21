@@ -30,7 +30,7 @@ public class JScribe {
 	public static void main(String...args) {
 		try {
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-			ToolTipManager.sharedInstance().setInitialDelay(0);
+			ToolTipManager.sharedInstance().setInitialDelay(1);
 		}catch(Exception e) {
 			e.printStackTrace();
 		}
