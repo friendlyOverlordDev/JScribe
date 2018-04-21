@@ -21,13 +21,15 @@ package p1327.jscribe.net;
  */
 
 import java.awt.Desktop;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
 
 import javax.net.ssl.HttpsURLConnection;
+
+import org.json.JSONObject;
+import org.json.JSONTokener;
 
 import p1327.jscribe.util.Message;
 import p1327.jscribe.util.Static;
@@ -52,20 +54,27 @@ public class UpdateCheckThread extends Thread{
 	@Override
 	public void run() {
 		try {
-			HttpsURLConnection con = (HttpsURLConnection)new URL(Static.versionCheck).openConnection();
+			HttpsURLConnection con = (HttpsURLConnection)new URL(Static.githubVersion).openConnection();
 			con.setConnectTimeout(timeout);
 			con.setReadTimeout(timeout);
 			con.setUseCaches(false);
+			con.setRequestProperty("Pragma", "no-cache");
+			con.setRequestProperty("Cache-Control", "no-cache");
+			con.setRequestProperty("Accept", "application/vnd.github.jean-grey-preview+json");
 
 			int status = con.getResponseCode();
 			if(status == 200){
-				try(ByteArrayOutputStream baos = new ByteArrayOutputStream(1024);
-					InputStream is = con.getInputStream()){
-					int b;
-					while((b = is.read()) > -1)
-						baos.write(b);
+				try(InputStream is = con.getInputStream()){
+					String onlineVersion = new JSONObject(new JSONTokener(is)).getString("tag_name");
+				
+				// simple version with own version file; has issues with slow updates
+//				try(ByteArrayOutputStream baos = new ByteArrayOutputStream(1024);
+//					InputStream is = con.getInputStream()){
+//					int b;
+//					while((b = is.read()) > -1)
+//						baos.write(b);
+//					String onlineVersion = new String(baos.toByteArray()).trim();
 					is.close();
-					String onlineVersion = new String(baos.toByteArray()).trim();
 					if(!onlineVersion.equals(Static.version)) {
 						if(Message.options("Update found!", "JScribe " + Static.version + " can be updated to version " + onlineVersion, "Update", "Later...") == 0){
 							try {
